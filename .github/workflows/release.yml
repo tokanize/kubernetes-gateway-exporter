@@ -68,7 +68,7 @@ jobs:
       #   - latest (only for non-prerelease tags, i.e. tags without a hyphen)
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/tokanize/kubernetes-gateway-exporter
           tags: |
