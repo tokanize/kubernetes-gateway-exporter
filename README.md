@@ -80,9 +80,12 @@ It includes the following labels:
 - `lb_type`: `internal` or `external`, heuristically inferred from the GatewayClass name.
 - `ip_address`: First IP from `Gateway.status.addresses`, or an empty string while unavailable.
 
-Users can locate the source YAML producing a specific metric series by running:
+Users can locate the source YAML producing a specific metric series by running
+(substitute the `route_namespace` and `route_name` label values):
 ```bash
-kubectl get httproute -n "<route_namespace>" "<route_name>" -o yaml
+ROUTE_NAMESPACE=default
+ROUTE_NAME=my-route
+kubectl get httproute -n "$ROUTE_NAMESPACE" "$ROUTE_NAME" -o yaml
 ```
 
 ---
@@ -99,14 +102,17 @@ binary archives with a signed `checksums.txt`.
 **Quick image signature check:**
 
 ```bash
-# 1. Resolve an immutable digest for the tag
-docker buildx imagetools inspect ghcr.io/tokanize/kubernetes-gateway-exporter:<tag>
+VERSION=0.1.1
 
-# 2. Verify the cosign signature
+# 1. Resolve an immutable digest for the tag
+docker buildx imagetools inspect ghcr.io/tokanize/kubernetes-gateway-exporter:${VERSION}
+
+# 2. Verify the cosign signature (DIGEST is the sha256 printed in step 1)
+DIGEST=sha256:...
 cosign verify \
   --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/tokanize/kubernetes-gateway-exporter@sha256:<digest>
+  ghcr.io/tokanize/kubernetes-gateway-exporter@${DIGEST}
 ```
 
 These checks establish artifact provenance and integrity; they do not guarantee
