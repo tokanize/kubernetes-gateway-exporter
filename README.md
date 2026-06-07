@@ -46,8 +46,10 @@ make build
 
 From the published OCI chart (signed, see [verification](./docs/verification.md)):
 ```bash
+VERSION=0.1.1 # Replace with the release you want to install
+
 helm upgrade --install gateway-exporter \
-  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version 0.1.0 \
+  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version "${VERSION}" \
   --namespace monitoring --create-namespace
 ```
 
@@ -102,17 +104,18 @@ binary archives with a signed `checksums.txt`.
 **Quick image signature check:**
 
 ```bash
-VERSION=0.1.1
+VERSION=0.1.1 # Replace with the release you want to verify
 
 # 1. Resolve an immutable digest for the tag
-docker buildx imagetools inspect ghcr.io/tokanize/kubernetes-gateway-exporter:${VERSION}
+IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
+DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" \
+  --format '{{json .}}' | jq -r '.manifest.digest')
 
-# 2. Verify the cosign signature (DIGEST is the sha256 printed in step 1)
-DIGEST=sha256:...
+# 2. Verify the cosign signature
 cosign verify \
   --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/tokanize/kubernetes-gateway-exporter@${DIGEST}
+  "${IMAGE}@${DIGEST}"
 ```
 
 These checks establish artifact provenance and integrity; they do not guarantee

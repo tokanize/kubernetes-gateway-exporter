@@ -14,9 +14,12 @@ auditing) see [docs/security-scanning.md](./security-scanning.md).
 
 | Tool | Purpose | Install |
 |------|---------|---------|
+| `docker` with Buildx | Resolve and pull image manifests | [Docker Engine](https://docs.docker.com/engine/install/) or [Docker Desktop](https://docs.docker.com/desktop/) |
 | `cosign` | Verify image signature and blob signature | `go install github.com/sigstore/cosign/v2/cmd/cosign@latest` or download a release from [sigstore/cosign](https://github.com/sigstore/cosign/releases) |
+| `crane` | Resolve the OCI chart digest | `go install github.com/google/go-containerregistry/cmd/crane@latest` |
 | `gh` | Verify GitHub Artifact Attestation (build provenance) | [cli.github.com](https://cli.github.com/) |
-| `jq` | Inspect SBOM JSON (optional) | `brew install jq` / `apt install jq` |
+| `helm` | Pull and install the verified chart | [helm.sh/docs/intro/install](https://helm.sh/docs/intro/install/) |
+| `jq` | Resolve the image digest and inspect SBOM JSON | `brew install jq` / `apt install jq` |
 | `sha256sum` | Verify binary checksums | Included on Linux; use `shasum -a 256` on macOS |
 
 You do not need any cosign key material. All signatures use keyless signing
@@ -34,7 +37,7 @@ Set these once and reuse them across every step below:
 
 ```bash
 IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
-VERSION=0.1.1
+VERSION=0.1.1 # Replace with the release you want to verify
 ```
 
 **Step 1 — resolve the digest for a tag:**
@@ -43,7 +46,7 @@ VERSION=0.1.1
 docker buildx imagetools inspect "${IMAGE}:${VERSION}"
 # Capture the manifest digest directly:
 DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" \
-  --format '{{ .Manifest.Digest }}')
+  --format '{{json .}}' | jq -r '.manifest.digest')
 echo "$DIGEST"   # e.g. sha256:abc123…
 ```
 
@@ -159,27 +162,37 @@ The chart is published as a signed OCI artifact at
 `oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter`. Resolve its digest,
 then verify the cosign signature and build provenance exactly as for the image:
 
+> **Current release status (June 7, 2026):** chart `0.1.1` was published, but
+> its signing job failed before provenance was attached. The verification
+> commands below require a later release whose chart job completed
+> successfully.
+
 ```bash
+CHART=ghcr.io/tokanize/charts/kubernetes-gateway-exporter
+
 # Resolve the chart digest for a version
-CHART_DIGEST=$(crane digest ghcr.io/tokanize/charts/kubernetes-gateway-exporter:0.1.0)
+CHART_DIGEST=$(crane digest "${CHART}:${VERSION}")
 
 # Verify the signature
 cosign verify \
   --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${CHART_DIGEST}
+  "${CHART}@${CHART_DIGEST}"
 
 # Verify build provenance
 gh attestation verify \
-  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${CHART_DIGEST} \
+  "oci://${CHART}@${CHART_DIGEST}" \
   --owner tokanize
 ```
 
 Then pull and install the verified chart:
 
 ```bash
+CHART=ghcr.io/tokanize/charts/kubernetes-gateway-exporter
+VERSION=0.1.1 # Replace with the release you want to install
+
 helm install gateway-exporter \
-  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version 0.1.0
+  "oci://${CHART}" --version "${VERSION}"
 ```
 
 ---
