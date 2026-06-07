@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # Set up the correct Go toolchain before CodeQL autobuild so the module
       # cache and build constraints match the project's go.mod toolchain directive.
