@@ -36,7 +36,7 @@ jobs:
       # exit-code: 0 — this step never blocks the build; findings surface in
       # the Security > Code scanning tab for triage.
       - name: Trivy scan — SARIF (advisory)
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
@@ -66,7 +66,7 @@ jobs:
       # This step runs for ALL callers including forks (it uses only exit-code,
       # not security-events write); SARIF upload above is the fork-gated step.
       - name: Trivy scan — gate on fixable CRITICAL vulns
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           scan-type: fs
           scan-ref: .
