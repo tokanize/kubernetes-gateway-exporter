@@ -6,6 +6,9 @@
   [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
   [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
   [![Kubernetes](https://img.shields.io/badge/Kubernetes-Gateway%20API-326CE5?logo=kubernetes)](https://gateway-api.sigs.k8s.io/)
+  [![CI](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/ci.yml)
+  [![CodeQL](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml)
+  [![govulncheck](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml)
 </div>
 
 ---
@@ -75,6 +78,40 @@ kubectl get httproute -n "<route_namespace>" "<route_name>" -o yaml
 
 ---
 
+## Supply chain security
+
+Each release publishes multi-arch container images to
+`ghcr.io/tokanize/kubernetes-gateway-exporter`, signed by digest with cosign
+keyless signing (GitHub OIDC — no long-lived keys). Every release also includes
+GitHub Artifact Attestation (build provenance) for both the image and binary
+archives, SPDX SBOMs (`sbom-image.spdx.json`, `sbom-source.spdx.json`), and
+binary archives with a signed `checksums.txt`.
+
+**Quick image signature check:**
+
+```bash
+# 1. Resolve an immutable digest for the tag
+docker buildx imagetools inspect ghcr.io/tokanize/kubernetes-gateway-exporter:<tag>
+
+# 2. Verify the cosign signature
+cosign verify \
+  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/tokanize/kubernetes-gateway-exporter@sha256:<digest>
+```
+
+These checks establish artifact provenance and integrity; they do not guarantee
+the software is free of vulnerabilities or that your environment is
+policy-compliant.
+
+For complete copy-pasteable verification steps (image, binary, checksums,
+SBOMs) see [docs/verification.md](./docs/verification.md). For the CI scanning
+layer (static analysis, container scanning, dependency auditing) see
+[docs/security-scanning.md](./docs/security-scanning.md). To report a
+vulnerability see [SECURITY.md](./SECURITY.md).
+
+---
+
 ## Documentation Directory
 
 Welcome to the central entrypoint for the Kubernetes Gateway Exporter documentation. All project rules, architectural decisions, and API schemas are maintained across the following sections:
@@ -100,7 +137,13 @@ We employ multi-agent LLM systems to maintain this repository. Agent personas an
 - **[Codex Constraints](./CODEX.md)**
 - **[Claude Constraints](./CLAUDE.md)**
 
-### 4. Guides
+### 4. Security & Releases
+- **[Security Scanning (CI)](./docs/security-scanning.md)**: Static analysis, container scanning, and dependency auditing in CI.
+- **[Release Verification](./docs/verification.md)**: Step-by-step guide for verifying image signatures, build provenance, checksums, and SBOMs.
+- **[Security Policy](./SECURITY.md)**: Vulnerability reporting process and supported versions.
+- **[Contributing](./CONTRIBUTING.md)**: Development workflow, code conventions, and pull request process.
+
+### 5. Guides
 - **[Testing Locally on kind](./docs/testing-on-kind.md)**: E2E local verification guide mocking Gateway API controller behavior.
 <div align="center">
   <i>Built by @tokanize to scratch a personal observability itch. Over-engineered? Maybe. Useful? Absolutely.</i>
