@@ -1,9 +1,12 @@
 replicaCount: 1
 
 image:
-  repository: my-registry/kubernetes-gateway-exporter
+  repository: ghcr.io/tokanize/kubernetes-gateway-exporter
   pullPolicy: IfNotPresent
-  tag: "latest"
+  # tag defaults to "" so the deployment template falls back to .Chart.AppVersion,
+  # which matches the release tag scheme (e.g. "0.1.0"). Set explicitly to pin
+  # to a specific image digest or tag (e.g. "sha256:...").
+  tag: ""
 
 serviceAccount:
   create: true
