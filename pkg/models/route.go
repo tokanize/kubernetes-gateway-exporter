@@ -1,7 +1,7 @@
 package models
 
 // ExposedRoute represents a flattened logical Gateway API route-to-Service relationship.
-// See docs/index.md for the core domain relationship mapping strategy.
+// See docs/architecture.md for the core domain relationship mapping strategy.
 type ExposedRoute struct {
 	Namespace        string
 	GatewayName      string

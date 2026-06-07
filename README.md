@@ -137,7 +137,7 @@ vulnerability see [SECURITY.md](./SECURITY.md).
 Welcome to the central entrypoint for the Kubernetes Gateway Exporter documentation. All project rules, architectural decisions, and API schemas are maintained across the following sections:
 
 ### 1. General & Architecture
-- **[Architecture & Overview](./docs/index.md)**: Conceptual model mapping Gateway -> Listener -> HTTPRoute -> Service.
+- **[Architecture & Overview](./docs/architecture.md)**: Conceptual model mapping Gateway -> Listener -> HTTPRoute -> Service.
 - **[Architecture Decision Records (ADRs)](./docs/adrs/)**: Technical design choices and rationales.
 
 
