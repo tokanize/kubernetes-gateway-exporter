@@ -114,7 +114,7 @@ jobs:
           upload-artifact: false   # we upload manually below for explicit naming
 
       - name: Upload image SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sbom-image
           path: sbom-image.spdx.json
@@ -232,7 +232,7 @@ jobs:
           subject-path: dist/kubernetes-gateway-exporter_*.tar.gz
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-artifacts
           path: |
