@@ -74,6 +74,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=${{ github.ref_name }}
             type=sha,format=long
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
@@ -128,6 +129,19 @@ jobs:
           subject-name: ghcr.io/tokanize/kubernetes-gateway-exporter
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      # Scan the published image (by digest) and block the release on fixable
+      # CRITICAL vulnerabilities — same threshold rationale as the CI fs scan.
+      - name: Trivy image scan — gate on fixable CRITICAL vulns
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}
+          format: table
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
 
       - name: Write summary
         run: |
@@ -313,7 +327,7 @@ jobs:
   # ---------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
-    needs: [image, binaries]
+    needs: [image, binaries, chart]
     runs-on: ubuntu-latest
     permissions:
       contents: write   # create release + upload assets

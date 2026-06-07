@@ -30,21 +30,30 @@ Container image tags are mutable — a tag can be reassigned to a different
 image without notice. A digest (the `sha256:…` hash of the image manifest) is
 immutable and uniquely identifies a specific build.
 
+Set these once and reuse them across every step below:
+
+```bash
+IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
+VERSION=0.1.1
+```
+
 **Step 1 — resolve the digest for a tag:**
 
 ```bash
-docker buildx imagetools inspect ghcr.io/tokanize/kubernetes-gateway-exporter:<tag>
+docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+# Capture the manifest digest directly:
+DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" \
+  --format '{{ .Manifest.Digest }}')
+echo "$DIGEST"   # e.g. sha256:abc123…
 ```
-
-Look for the `Digest:` line in the output, e.g. `sha256:abc123…`.
 
 **Step 2 — pull by digest:**
 
 ```bash
-docker pull ghcr.io/tokanize/kubernetes-gateway-exporter@sha256:<digest>
+docker pull "${IMAGE}@${DIGEST}"
 ```
 
-All subsequent verification steps use the digest, not the tag.
+All subsequent verification steps use `${DIGEST}`, not the tag.
 
 ---
 
@@ -59,7 +68,7 @@ Sigstore Rekor transparency log and that the signing identity matches the
 cosign verify \
   --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-  ghcr.io/tokanize/kubernetes-gateway-exporter@sha256:<digest>
+  "${IMAGE}@${DIGEST}"
 ```
 
 A successful run prints the verified payload JSON. An error means either the
@@ -75,20 +84,18 @@ binary archive) and the exact source commit and workflow run that produced it.
 **Image:**
 
 ```bash
-gh attestation verify \
-  oci://ghcr.io/tokanize/kubernetes-gateway-exporter@sha256:<digest> \
-  --owner tokanize
+gh attestation verify "oci://${IMAGE}@${DIGEST}" --owner tokanize
 ```
 
 **Binary archive (after downloading from the GitHub Release):**
 
 ```bash
 gh attestation verify \
-  kubernetes-gateway-exporter_<version>_linux_amd64.tar.gz \
+  "kubernetes-gateway-exporter_v${VERSION}_linux_amd64.tar.gz" \
   --owner tokanize
 ```
 
-Replace `<version>`, OS, and architecture as needed. Binary archives are
+Swap the OS/architecture in the filename as needed. Binary archives are
 published for the following combinations:
 
 - `linux_amd64`, `linux_arm64`
