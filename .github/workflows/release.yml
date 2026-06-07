@@ -243,7 +243,73 @@ jobs:
             dist/sbom-source.spdx.json
 
   # ---------------------------------------------------------------------------
-  # Job C: Create the GitHub Release and attach all assets.
+  # Job C: Package, push, sign and attest the Helm chart as an OCI artifact.
+  # ---------------------------------------------------------------------------
+  chart:
+    name: Package, push & sign Helm chart
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write       # push chart to GHCR as an OCI artifact
+      id-token: write       # cosign keyless + provenance OIDC
+      attestations: write   # GitHub Artifact Attestation for the chart
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Log in to GHCR (Helm OCI registry)
+        run: |
+          helm registry login ghcr.io \
+            --username "${{ github.actor }}" \
+            --password "${{ secrets.GITHUB_TOKEN }}"
+
+      # Override chart version + appVersion with the release tag (strip leading
+      # 'v') so the published chart version always tracks the release.
+      - name: Package and push chart
+        id: push
+        run: |
+          VERSION="${{ github.ref_name }}"
+          CHART_VERSION="${VERSION#v}"
+          helm package deploy/chart/kubernetes-gateway-exporter \
+            --version "${CHART_VERSION}" --app-version "${CHART_VERSION}"
+          helm push "kubernetes-gateway-exporter-${CHART_VERSION}.tgz" \
+            oci://ghcr.io/tokanize/charts 2>&1 | tee push.log
+          DIGEST=$(grep -oE 'sha256:[a-f0-9]+' push.log | head -1)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "Chart digest: ${DIGEST}"
+
+      # Sign the chart by digest (immutable), same keyless flow as the image.
+      - name: Sign chart (keyless)
+        run: |
+          cosign sign --yes \
+            ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${{ steps.push.outputs.digest }}
+
+      - name: Attest chart provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ghcr.io/tokanize/charts/kubernetes-gateway-exporter
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Write summary
+        run: |
+          {
+            echo "## Helm chart published"
+            echo ""
+            echo "\`oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter\` @ \`${{ steps.push.outputs.digest }}\`"
+            echo ""
+            echo "Install: \`helm install gateway-exporter oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version ${GITHUB_REF_NAME#v}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------------------
+  # Job D: Create the GitHub Release and attach all assets.
   # ---------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
