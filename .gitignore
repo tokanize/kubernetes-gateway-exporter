@@ -41,3 +41,4 @@ coverage.out
 !.gemini/commands/
 !.gemini/skills/
 scratch/
+docs/node_modules/
