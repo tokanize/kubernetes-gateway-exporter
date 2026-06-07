@@ -34,10 +34,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -49,13 +49,13 @@ jobs:
       # QEMU allows the buildx builder to emulate non-native architectures
       # (e.g. arm64 on an amd64 GitHub-hosted runner).
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -68,7 +68,7 @@ jobs:
       #   - latest (only for non-prerelease tags, i.e. tags without a hyphen)
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@80c7e94dd9b9319bd5eb7a0e0fe9291e23a2a2e9 # v6
         with:
           images: ghcr.io/tokanize/kubernetes-gateway-exporter
           tags: |
@@ -85,7 +85,7 @@ jobs:
       # Attestation in the step below instead.
       - name: Build and push image
         id: build
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -95,7 +95,7 @@ jobs:
           provenance: false
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       # Sign by digest rather than a mutable tag so the signature is
       # permanently bound to the exact image content.
@@ -107,7 +107,7 @@ jobs:
       # Generate an SPDX SBOM for the pushed image. The artifact is uploaded
       # here and attached to the GitHub Release in the release job.
       - name: Generate image SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           image: ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}
           format: spdx-json
@@ -115,7 +115,7 @@ jobs:
           upload-artifact: false   # we upload manually below for explicit naming
 
       - name: Upload image SBOM artifact
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: sbom-image
           path: sbom-image.spdx.json
@@ -124,7 +124,7 @@ jobs:
       # cryptographically verifiable build-provenance record backed by Sigstore
       # and GitHub's OIDC token — no external key material required.
       - name: Attest image provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-name: ghcr.io/tokanize/kubernetes-gateway-exporter
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -133,7 +133,7 @@ jobs:
       # Scan the published image (by digest) and block the release on fixable
       # CRITICAL vulnerabilities — same threshold rationale as the CI fs scan.
       - name: Trivy image scan — gate on fixable CRITICAL vulns
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}
@@ -166,10 +166,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
           cache: true
@@ -212,7 +212,7 @@ jobs:
           cat checksums.txt
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       # Sign the checksums file as a blob using keyless Sigstore signing.
       # Consumers can verify any binary by: checking its SHA-256 against
@@ -228,7 +228,7 @@ jobs:
 
       # Generate an SPDX SBOM for the Go module / source tree.
       - name: Generate source SBOM
-        uses: anchore/sbom-action@v0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
         with:
           path: .
           format: spdx-json
@@ -241,12 +241,12 @@ jobs:
       # Attest build provenance for the binary archives so downstream consumers
       # can verify which commit and workflow produced each release asset.
       - name: Attest binary provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-path: dist/kubernetes-gateway-exporter_*.tar.gz
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-artifacts
           path: |
@@ -270,16 +270,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
 
       - name: Set up Helm
-        uses: azure/setup-helm@v5
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v4
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -313,7 +313,7 @@ jobs:
             ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${{ steps.push.outputs.digest }}
 
       - name: Attest chart provenance
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
         with:
           subject-name: ghcr.io/tokanize/charts/kubernetes-gateway-exporter
           subject-digest: ${{ steps.push.outputs.digest }}
@@ -341,19 +341,19 @@ jobs:
 
     steps:
       - name: Download release artifacts (binaries job)
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: release-artifacts
           path: release-assets
 
       - name: Download image SBOM (image job)
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           name: sbom-image
           path: release-assets
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
           # Tags containing a hyphen (e.g. v0.1.0-rc1) are marked as prereleases.
           prerelease: ${{ contains(github.ref_name, '-') }}
