@@ -146,6 +146,37 @@ jq '.packages | length' sbom-image.spdx.json
 
 ---
 
+## 6. Verify the published Helm chart
+
+The chart is published as a signed OCI artifact at
+`oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter`. Resolve its digest,
+then verify the cosign signature and build provenance exactly as for the image:
+
+```bash
+# Resolve the chart digest for a version
+CHART_DIGEST=$(crane digest ghcr.io/tokanize/charts/kubernetes-gateway-exporter:0.1.0)
+
+# Verify the signature
+cosign verify \
+  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+  ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${CHART_DIGEST}
+
+# Verify build provenance
+gh attestation verify \
+  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${CHART_DIGEST} \
+  --owner tokanize
+```
+
+Then pull and install the verified chart:
+
+```bash
+helm install gateway-exporter \
+  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version 0.1.0
+```
+
+---
+
 ## What verification proves
 
 - The image or binary was built by the `tokanize/kubernetes-gateway-exporter`

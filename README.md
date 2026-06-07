@@ -43,6 +43,15 @@ make build
 ```
 
 ### Deploy
+
+From the published OCI chart (signed, see [verification](./docs/verification.md)):
+```bash
+helm upgrade --install gateway-exporter \
+  oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version 0.1.0 \
+  --namespace monitoring --create-namespace
+```
+
+Or from local source:
 ```bash
 helm upgrade --install gateway-exporter ./deploy/chart/kubernetes-gateway-exporter \
   --namespace monitoring \
