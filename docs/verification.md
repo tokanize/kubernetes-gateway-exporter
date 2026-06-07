@@ -37,7 +37,7 @@ Set these once and reuse them across every step below:
 
 ```bash
 IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
-VERSION=0.1.1 # Replace with the release you want to verify
+VERSION=0.1.2 # Replace with the release you want to verify
 ```
 
 **Step 1 — resolve the digest for a tag:**
@@ -162,10 +162,7 @@ The chart is published as a signed OCI artifact at
 `oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter`. Resolve its digest,
 then verify the cosign signature and build provenance exactly as for the image:
 
-> **Current release status (June 7, 2026):** chart `0.1.1` was published, but
-> its signing job failed before provenance was attached. The verification
-> commands below require a later release whose chart job completed
-> successfully.
+
 
 ```bash
 CHART=ghcr.io/tokanize/charts/kubernetes-gateway-exporter
@@ -189,7 +186,7 @@ Then pull and install the verified chart:
 
 ```bash
 CHART=ghcr.io/tokanize/charts/kubernetes-gateway-exporter
-VERSION=0.1.1 # Replace with the release you want to install
+VERSION=0.1.2 # Replace with the release you want to install
 
 helm install gateway-exporter \
   "oci://${CHART}" --version "${VERSION}"
