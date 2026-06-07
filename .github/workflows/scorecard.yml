@@ -1,0 +1,46 @@
+name: Scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Weekly on Monday at 04:15 UTC
+    - cron: '15 4 * * 1'
+  workflow_dispatch:
+
+# Scorecard analyses the default branch; running on pull_request would analyse
+# a transient merge ref, not the published state, so PR triggers are omitted.
+permissions:
+  contents: read
+
+jobs:
+  scorecard:
+    name: OpenSSF Scorecard
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to upload SARIF results to the Code scanning dashboard
+      security-events: write
+      # Required for Scorecard to publish results to the OpenSSF public API
+      # (only applies when publish_results: true on the default branch)
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Run Scorecard analysis
+        uses: ossf/scorecard-action@v2
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          # publish_results: true enables the Scorecard badge and public API entry
+          publish_results: true
+
+      - name: Upload Scorecard SARIF to Code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif

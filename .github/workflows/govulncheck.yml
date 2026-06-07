@@ -1,0 +1,38 @@
+name: govulncheck
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly on Monday at 03:45 UTC
+    - cron: '45 3 * * 1'
+  workflow_dispatch:
+
+# govulncheck only reads the repository and Go module graph — no elevated
+# permissions are needed, so the least-privilege default is sufficient.
+permissions:
+  contents: read
+
+jobs:
+  govulncheck:
+    name: Go vulnerability scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # govulncheck reports only vulnerabilities reachable from the compiled
+      # call graph, which makes it low-noise relative to a raw dep-tree scan.
+      # This step is intentionally BLOCKING: a found vulnerability fails the job.
+      # Use `govulncheck@latest` so we always get the most current vuln database;
+      # pin to a specific tag (e.g. @v1.x.x) once release cadence stabilises.
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

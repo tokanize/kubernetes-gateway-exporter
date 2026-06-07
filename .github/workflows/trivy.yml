@@ -1,0 +1,77 @@
+name: Trivy
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly on Monday at 04:00 UTC
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+
+# Least-privilege default; the scan job elevates only what is needed for SARIF
+# upload when running on the base repository (not a fork PR).
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Filesystem scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to upload SARIF results to the Code scanning dashboard.
+      # Fork PRs do not have this permission; the SARIF upload step is guarded
+      # with a conditional so forks still pass (they just skip upload).
+      security-events: write
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── SARIF upload (advisory) ────────────────────────────────────────────
+      # Produces a SARIF report covering vulns, secrets, and misconfigs.
+      # exit-code: 0 — this step never blocks the build; findings surface in
+      # the Security > Code scanning tab for triage.
+      - name: Trivy scan — SARIF (advisory)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          scanners: vuln,secret,misconfig
+          exit-code: '0'
+
+      # Upload only when we have `security-events: write`.
+      # Fork PRs head.repo != base repo, so they cannot write to the base repo's
+      # security dashboard — guard the upload to prevent permission errors.
+      - name: Upload SARIF to Code scanning
+        if: >
+          always() &&
+          (github.event_name != 'pull_request' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      # ── Blocking gate ──────────────────────────────────────────────────────
+      # Threshold rationale:
+      #   • CRITICAL only — avoids noise from HIGH/MEDIUM findings that are
+      #     commonly unfixable within a reasonable sprint cycle.
+      #   • ignore-unfixed: true — suppresses CVEs where no patched version
+      #     exists yet; failing on unfixed vulns provides no actionable signal.
+      # This step runs for ALL callers including forks (it uses only exit-code,
+      # not security-events write); SARIF upload above is the fork-gated step.
+      - name: Trivy scan — gate on fixable CRITICAL vulns
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          scanners: vuln,secret,misconfig
+          exit-code: '1'
+          severity: CRITICAL
+          ignore-unfixed: true
