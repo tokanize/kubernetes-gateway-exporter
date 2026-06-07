@@ -16,14 +16,21 @@ As a Kubernetes infrastructure component with `ClusterRole` read permissions, th
    - The application is containerized using a multi-stage Docker build.
    - The runtime image is `gcr.io/distroless/static:nonroot`. It contains no shell or package manager, reducing the runtime attack surface.
    - The application runs entirely as `nonroot` (UID 65532).
+   - Builder and runtime images are pinned to immutable manifest-list digests;
+     readable tags remain alongside the digests for maintenance context.
 
-3. **Readiness Probe Integrity:**
+3. **Kubernetes Runtime Hardening:**
+   - The default chart sets `runAsNonRoot`, UID/GID 65532, a read-only root
+     filesystem, disabled privilege escalation, dropped capabilities, and the
+     `RuntimeDefault` seccomp profile.
+
+4. **Readiness Probe Integrity:**
    - The `/readyz` endpoint ensures the Kubernetes API cache (`controller-runtime` informer) is fully synchronized before returning 200 OK. This prevents routing traffic to an empty instance.
 
-4. **Principle of Least Privilege (RBAC):**
+5. **Principle of Least Privilege (RBAC):**
    - The Helm chart grants read-only access to `Gateway`, `HTTPRoute`, `ReferenceGrant`, `Namespace`, and `Service` resources required for relationship resolution.
 
-5. **NetworkPolicy Baseline:**
+6. **NetworkPolicy Baseline:**
    - A `NetworkPolicy` limits inbound connections to port 8080. Egress is currently unrestricted because API-server and optional OTEL destinations vary by cluster; operators should narrow it for their environment.
 
 ## Future Recommendations (What else needs securing?)

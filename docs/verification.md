@@ -38,6 +38,11 @@ Set these once and reuse them across every step below:
 ```bash
 IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
 VERSION=0.1.2 # Replace with the release you want to verify
+SOURCE_REF="refs/tags/v${VERSION}"
+SOURCE_DIGEST=$(gh api \
+  "repos/tokanize/kubernetes-gateway-exporter/commits/v${VERSION}" \
+  --jq .sha)
+SIGNER_WORKFLOW=tokanize/kubernetes-gateway-exporter/.github/workflows/release.yml
 ```
 
 **Step 1 — resolve the digest for a tag:**
@@ -69,7 +74,7 @@ Sigstore Rekor transparency log and that the signing identity matches the
 
 ```bash
 cosign verify \
-  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-identity "https://github.com/${SIGNER_WORKFLOW}@${SOURCE_REF}" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "${IMAGE}@${DIGEST}"
 ```
@@ -87,7 +92,11 @@ binary archive) and the exact source commit and workflow run that produced it.
 **Image:**
 
 ```bash
-gh attestation verify "oci://${IMAGE}@${DIGEST}" --owner tokanize
+gh attestation verify "oci://${IMAGE}@${DIGEST}" \
+  --repo tokanize/kubernetes-gateway-exporter \
+  --signer-workflow "${SIGNER_WORKFLOW}" \
+  --source-ref "${SOURCE_REF}" \
+  --source-digest "${SOURCE_DIGEST}"
 ```
 
 **Binary archive (after downloading from the GitHub Release):**
@@ -95,7 +104,10 @@ gh attestation verify "oci://${IMAGE}@${DIGEST}" --owner tokanize
 ```bash
 gh attestation verify \
   "kubernetes-gateway-exporter_v${VERSION}_linux_amd64.tar.gz" \
-  --owner tokanize
+  --repo tokanize/kubernetes-gateway-exporter \
+  --signer-workflow "${SIGNER_WORKFLOW}" \
+  --source-ref "${SOURCE_REF}" \
+  --source-digest "${SOURCE_DIGEST}"
 ```
 
 Swap the OS/architecture in the filename as needed. Binary archives are
@@ -109,7 +121,9 @@ published for the following combinations:
 ## 4. Verify checksums and their signature
 
 Each GitHub Release ships `checksums.txt`, `checksums.txt.sig`, and
-`checksums.txt.pem`.
+`checksums.txt.pem`. Releases produced by the hardened workflow list every
+binary archive and both SBOM files in this manifest. Release `v0.1.2` predates
+this change and lists binary archives only.
 
 **Step 1 — verify the checksum file:**
 
@@ -123,7 +137,7 @@ On macOS use `shasum -a 256 -c checksums.txt --ignore-missing`.
 
 ```bash
 cosign verify-blob \
-  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-identity "https://github.com/${SIGNER_WORKFLOW}@${SOURCE_REF}" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   --signature checksums.txt.sig \
   --certificate checksums.txt.pem \
@@ -154,6 +168,23 @@ jq '.packages[].name' sbom-image.spdx.json
 jq '.packages | length' sbom-image.spdx.json
 ```
 
+For releases produced by the hardened workflow, verify both SBOM checksums with
+the same signed manifest from section 4 and verify their provenance:
+
+```bash
+gh attestation verify sbom-image.spdx.json \
+  --repo tokanize/kubernetes-gateway-exporter \
+  --signer-workflow "${SIGNER_WORKFLOW}" \
+  --source-ref "${SOURCE_REF}" \
+  --source-digest "${SOURCE_DIGEST}"
+
+gh attestation verify sbom-source.spdx.json \
+  --repo tokanize/kubernetes-gateway-exporter \
+  --signer-workflow "${SIGNER_WORKFLOW}" \
+  --source-ref "${SOURCE_REF}" \
+  --source-digest "${SOURCE_DIGEST}"
+```
+
 ---
 
 ## 6. Verify the published Helm chart
@@ -172,14 +203,17 @@ CHART_DIGEST=$(crane digest "${CHART}:${VERSION}")
 
 # Verify the signature
 cosign verify \
-  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-identity "https://github.com/${SIGNER_WORKFLOW}@${SOURCE_REF}" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "${CHART}@${CHART_DIGEST}"
 
 # Verify build provenance
 gh attestation verify \
   "oci://${CHART}@${CHART_DIGEST}" \
-  --owner tokanize
+  --repo tokanize/kubernetes-gateway-exporter \
+  --signer-workflow "${SIGNER_WORKFLOW}" \
+  --source-ref "${SOURCE_REF}" \
+  --source-digest "${SOURCE_DIGEST}"
 ```
 
 Then pull and install the verified chart:
@@ -189,19 +223,24 @@ CHART=ghcr.io/tokanize/charts/kubernetes-gateway-exporter
 VERSION=0.1.2 # Replace with the release you want to install
 
 helm install gateway-exporter \
-  "oci://${CHART}" --version "${VERSION}"
+  "oci://${CHART}" --version "${VERSION}" \
+  --set-string image.digest="${DIGEST}"
 ```
+
+Setting `image.digest` makes the rendered Deployment use
+`repository@sha256:...`; it takes precedence over the mutable image tag.
 
 ---
 
 ## What verification proves
 
-- The image or binary was built by the `tokanize/kubernetes-gateway-exporter`
-  GitHub repository and workflow, not by a third party.
+- The artifact has a valid attestation from the expected repository, workflow,
+  release ref, and source commit.
 - The cosign signature was issued via GitHub OIDC and recorded in the public
   Sigstore Rekor transparency log. No long-lived signing key was involved.
 - The build provenance attestation links the artifact to a specific source
-  commit and workflow run, making the build reproducible to audit.
+  commit and workflow run. This supports auditing but does not make the build
+  reproducible by itself.
 - The checksums file was signed by the same workflow, so a matching checksum
   confirms the binary archive has not been altered after release.
 
@@ -212,6 +251,8 @@ helm install gateway-exporter \
 - That your deployment environment is correctly configured or secured.
 - That the Gateway API exposure model implemented here is policy-compliant for
   your organisation's specific requirements.
+- That a signed artifact is safe merely because the official workflow produced
+  it. Signatures authenticate origin and integrity, not correctness.
 
 ---
 

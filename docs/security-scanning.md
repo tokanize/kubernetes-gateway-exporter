@@ -1,6 +1,6 @@
 # Security Scanning
 
-This document describes the automated security scanning layer for `kubernetes-gateway-exporter`. Each workflow runs independently and targets a specific class of risk.
+This document describes the automated security controls for `kubernetes-gateway-exporter`. The controls provide layered engineering evidence; none of them independently proves that an artifact is secure.
 
 ## Workflow summary
 
@@ -10,6 +10,7 @@ This document describes the automated security scanning layer for `kubernetes-ga
 | **govulncheck** | `govulncheck.yml` | Known CVEs in *reachable* Go code (call-graph-aware) | PR → main, push → main, weekly | **BLOCKING** — job fails if any reachable vulnerability is found |
 | **Trivy fs** | `trivy.yml` | Dependency vulns, secrets, misconfiguration in repo files | PR → main, push → main, weekly | SARIF upload is advisory; a second gate step **blocks on fixable CRITICAL vulns** |
 | **Scorecard** | `scorecard.yml` | Repo security posture (branch protection, pinned deps, signed releases, etc.) | push → main, weekly | Advisory — results published to OpenSSF public API and Code scanning |
+| **Release validation** | `release.yml` | Formatting, vet, staticcheck, tidy, tests, Helm lint, govulncheck, Trivy repository and image policy | push → `v*` tag | **BLOCKING** — publishing jobs depend on source validation; release aliases and signatures depend on the image gate |
 
 ## CodeQL (Go SAST)
 
@@ -21,7 +22,7 @@ CodeQL results do not block pull requests unless branch protection rules are exp
 
 `govulncheck` queries the Go vulnerability database (https://vuln.go.dev) and reports only vulnerabilities that are reachable from the compiled call graph. This makes it substantially lower-noise than a raw dependency tree scan, where many reported CVEs affect code paths that are never called.
 
-This job is **blocking by design**. A found vulnerability must either be resolved (upgrade the affected module) or accepted with a documented justification before the PR can merge.
+This job fails when it finds a reachable vulnerability. Whether that failure blocks a merge also depends on the repository ruleset requiring the `Go vulnerability scan` check.
 
 ## Trivy filesystem scan
 
@@ -40,7 +41,9 @@ Two steps run on every trigger:
 
 ### Image scanning
 
-Trivy scanning of the **built container image** is handled by the release workflow, not here. This workflow performs filesystem/repo scanning only.
+Trivy scanning of the **built multi-platform container image** is handled by the release workflow. Buildx first publishes the digest under a run-specific quarantine tag. Trivy scans that digest before any semver, `v`-prefixed, SHA, or `latest` release alias is assigned. The workflow then promotes the same digest without rebuilding, signs and attests it, and performs a second digest scan as a registry consistency check.
+
+If the pre-promotion scan fails, the quarantine object can remain addressable in GHCR, but it receives no release alias, signature, provenance attestation, or GitHub Release.
 
 ## Scorecard (OpenSSF)
 
@@ -48,14 +51,58 @@ The [OpenSSF Scorecard](https://securityscorecards.dev) evaluates the repository
 
 Scorecard runs only on pushes to the default branch and on the weekly schedule. Running it on pull requests would analyse a transient merge ref rather than the published repository state, making results less meaningful.
 
-## Version tags vs SHA pins
+## Immutable dependency pins
 
-All actions in these workflows are pinned to major version tags (e.g. `actions/checkout@v4`, `github/codeql-action/init@v3`). Major version tags are maintained by action authors and point to the latest compatible release within that major version. Dependabot is responsible for keeping these tags current.
+GitHub Actions are pinned to immutable commit SHAs where practical. Trailing comments such as `# v6` record the upstream release line for human readability. Dependabot is configured to update the SHA pins when reviewed upstream releases become available.
 
-Full SHA pinning (e.g. `actions/checkout@abc1234`) provides a stronger supply-chain guarantee because it prevents silent tag mutation, but it comes with an operational cost: SHA references must be updated manually or via tooling on every upstream patch release, and outdated SHA pins are harder to audit. SHA pinning is a documented future hardening step that should be evaluated when the project has a Dependabot configuration set up for Actions SHA tracking.
+Docker base images use readable tags plus immutable manifest-list digests, for example `golang:1.26-alpine@sha256:...`. The tag communicates intent while the digest prevents an upstream tag mutation from silently changing a build. Dependabot tracks both GitHub Actions and Docker image updates.
+
+The `govulncheck` CLI is also version-pinned. Its vulnerability database is updated independently when the command runs.
+
+## Release signing, provenance, and SBOMs
+
+- **Cosign signatures** bind an immutable image or chart digest, or the final checksum file, to the GitHub Actions OIDC identity of the release workflow.
+- **GitHub Artifact Attestations** bind images, charts, binary archives, and SBOM files to the repository, workflow, source ref, and source commit that produced them.
+- **SPDX SBOMs** inventory detected packages in the image and source tree. They support incident response and downstream vulnerability analysis; they are not vulnerability scan results.
+- **Signed checksums** cover every downloadable binary archive and SBOM in releases produced by the hardened workflow.
+
+Signatures and attestations establish origin and integrity. They do not establish that the signed code is correct, vulnerability-free, reviewed, or policy-compliant.
+
+## Scanner finding triage
+
+The following findings are intentionally not converted into global ignore rules:
+
+- Dockerfile `HEALTHCHECK`: Kubernetes liveness and readiness probes are the runtime health mechanism, and the distroless image has no shell utility suitable for a portable Docker health command.
+- Default namespace: Helm templates intentionally omit a fixed namespace so the operator controls it with `--namespace`.
+- Trusted registry restriction: the chart defaults to GHCR but keeps `image.repository` configurable for private mirrors and air-gapped environments.
+
+Default chart security does enforce non-root execution, UID/GID 65532, a read-only root filesystem, dropped capabilities, disabled privilege escalation, and `RuntimeDefault` seccomp.
+
+## Repository enforcement
+
+The default branch ruleset requires changes to arrive through a pull request,
+all review conversations to be resolved, and these checks to pass against the
+latest target branch:
+
+- `Lint & vet`
+- `Unit tests`
+- `Helm chart lint`
+- `Docker build (no push)`
+- `Analyze (Go)`
+- `Go vulnerability scan`
+- `Filesystem scan`
+
+No second approval is required because the repository currently has a single
+maintainer. Repository administrators can bypass rules only through the pull
+request interface, not by directly pushing to `main`.
+
+An independent tag ruleset prevents updates and deletion of `v*` release tags
+and has no bypass actors. A release correction therefore requires a new version
+instead of moving an existing tag.
 
 ## What these scans do not prove
 
 - **Not a zero-vulnerability guarantee.** Scanners operate on known databases and static heuristics. Unknown vulnerabilities (zero-days), logic bugs, and issues in runtime configuration are outside their scope.
 - **Not a compliance or policy audit.** These workflows provide engineering-level signal. They do not constitute a formal security audit, penetration test, or certification against any regulatory framework (SOC 2, PCI-DSS, etc.).
 - **Not exhaustive secret detection.** Secret scanning catches many common patterns but is not a substitute for preventing secrets from entering the repository in the first place.
+- **Not proof that a failed release published nothing.** A failed image gate can leave an unpromoted quarantine object in GHCR; it is not signed or exposed under a release alias.
