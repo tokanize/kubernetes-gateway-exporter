@@ -254,13 +254,13 @@ jobs:
 
     steps:
       - name: Download release artifacts (binaries job)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-artifacts
           path: release-assets
 
       - name: Download image SBOM (image job)
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: sbom-image
           path: release-assets
