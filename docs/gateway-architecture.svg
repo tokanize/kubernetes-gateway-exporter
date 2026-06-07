@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 600" width="100%" height="100%" role="img" aria-label="Kubernetes Gateway Exporter architecture: Gateway to Listener to HTTPRoute to Service, resolved by the exporter into exposed_route_info">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+    <linearGradient id="node" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="gw" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="exp" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#6b21a8"/>
+    </linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b"/>
+    </marker>
+    <marker id="arrP" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#a855f7"/>
+    </marker>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="b"/>
+      <feComposite in="SourceGraphic" in2="b" operator="over"/>
+    </filter>
+  </defs>
+
+  <style>
+    .title  { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-weight:800; fill:#ffffff; }
+    .label  { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; font-weight:700; font-size:15px; fill:#f8fafc; }
+    .kind   { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; fill:#64748b; letter-spacing:0.5px; }
+    .mono   { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; fill:#94a3b8; }
+    .pill   { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:11px; font-weight:600; }
+    .code   { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  </style>
+
+  <rect width="900" height="600" rx="28" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="450" y="52" class="title" font-size="24" text-anchor="middle" letter-spacing="1">KUBERNETES GATEWAY EXPORTER</text>
+  <text x="450" y="76" class="kind" text-anchor="middle" fill="#94a3b8">STATE-BASED EXPOSURE INVENTORY · RESOLVED BEFORE TRAFFIC</text>
+
+  <!-- Resolution chain: Gateway -> Listener -> HTTPRoute -> Service -->
+  <path d="M 196 175 L 244 175" stroke="#475569" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M 396 175 L 444 175" stroke="#475569" stroke-width="3" marker-end="url(#arr)"/>
+  <path d="M 596 175 L 644 175" stroke="#475569" stroke-width="3" marker-end="url(#arr)"/>
+
+  <!-- Gateway -->
+  <rect x="40" y="125" width="156" height="100" rx="12" fill="url(#node)" stroke="#1d4ed8" stroke-width="1.5"/>
+  <rect x="40" y="125" width="156" height="26" rx="12" fill="url(#gw)"/>
+  <text x="118" y="143" class="pill" text-anchor="middle" fill="#ffffff">GATEWAY</text>
+  <text x="118" y="178" class="label" text-anchor="middle">status.addresses</text>
+  <rect x="56" y="190" width="58" height="22" rx="11" fill="#0c4a6e" stroke="#0ea5e9" stroke-width="1"/>
+  <text x="85" y="205" class="pill" text-anchor="middle" fill="#7dd3fc">external</text>
+  <rect x="120" y="190" width="58" height="22" rx="11" fill="#1e293b" stroke="#475569" stroke-width="1"/>
+  <text x="149" y="205" class="pill" text-anchor="middle" fill="#cbd5e1">internal</text>
+
+  <!-- Listener -->
+  <rect x="244" y="125" width="152" height="100" rx="12" fill="url(#node)" stroke="#334155" stroke-width="1.5"/>
+  <text x="320" y="148" class="kind" text-anchor="middle">LISTENER</text>
+  <text x="320" y="176" class="label" text-anchor="middle">:443 https</text>
+  <text x="320" y="200" class="mono" text-anchor="middle">hostname + TLS</text>
+
+  <!-- HTTPRoute -->
+  <rect x="444" y="125" width="152" height="100" rx="12" fill="url(#node)" stroke="#334155" stroke-width="1.5"/>
+  <text x="520" y="148" class="kind" text-anchor="middle">HTTPROUTE</text>
+  <text x="520" y="176" class="label" text-anchor="middle">accepted parent</text>
+  <text x="520" y="200" class="mono" text-anchor="middle">path + hostname</text>
+
+  <!-- Service -->
+  <rect x="644" y="125" width="156" height="100" rx="12" fill="url(#node)" stroke="#334155" stroke-width="1.5"/>
+  <text x="722" y="148" class="kind" text-anchor="middle">SERVICE</text>
+  <text x="722" y="176" class="label" text-anchor="middle">backendRef</text>
+  <text x="722" y="200" class="mono" text-anchor="middle">+ ReferenceGrant</text>
+
+  <!-- Exporter reads the whole chain from informer cache, not live traffic -->
+  <path d="M 118 225 L 240 312" stroke="#a855f7" stroke-width="2" stroke-dasharray="5 5" opacity="0.6"/>
+  <path d="M 320 225 L 400 312" stroke="#a855f7" stroke-width="2" stroke-dasharray="5 5" opacity="0.6"/>
+  <path d="M 520 225 L 520 312" stroke="#a855f7" stroke-width="2" stroke-dasharray="5 5" opacity="0.6"/>
+  <path d="M 722 225 L 640 312" stroke="#a855f7" stroke-width="2" stroke-dasharray="5 5" opacity="0.6"/>
+
+  <rect x="160" y="315" width="580" height="96" rx="14" fill="url(#node)" stroke="#7e22ce" stroke-width="1.5"/>
+  <rect x="184" y="338" width="196" height="50" rx="10" fill="url(#exp)" filter="url(#glow)"/>
+  <text x="282" y="360" class="title" font-size="16" text-anchor="middle">EXPORTER</text>
+  <text x="282" y="378" class="pill" text-anchor="middle" fill="#f3e8ff">controller-runtime informers</text>
+  <text x="406" y="352" class="mono" text-anchor="start" fill="#cbd5e1">Resolves listener attachment, hostname</text>
+  <text x="406" y="372" class="mono" text-anchor="start" fill="#cbd5e1">intersection &amp; backend reachability</text>
+  <text x="406" y="394" class="kind" text-anchor="start" fill="#a855f7">from cache state — no request sampling</text>
+
+  <!-- Output metric -->
+  <path d="M 450 411 L 450 444" stroke="#a855f7" stroke-width="3" marker-end="url(#arrP)"/>
+
+  <rect x="150" y="452" width="600" height="98" rx="14" fill="#020617" stroke="#a855f7" stroke-width="1.5"/>
+  <rect x="150" y="452" width="600" height="28" rx="14" fill="#1a1033"/>
+  <rect x="150" y="466" width="600" height="14" fill="#1a1033"/>
+  <circle cx="172" cy="466" r="4" fill="#ef4444"/>
+  <circle cx="188" cy="466" r="4" fill="#f59e0b"/>
+  <circle cx="204" cy="466" r="4" fill="#22c55e"/>
+  <text x="450" y="470" class="kind" text-anchor="middle" fill="#64748b">primary metric · Gauge</text>
+
+  <text x="174" y="508" class="code" font-size="14" text-anchor="start" fill="#c084fc">exposed_route_info</text>
+  <text x="330" y="508" class="code" font-size="14" text-anchor="start" fill="#475569">{</text>
+  <text x="726" y="508" class="code" font-size="14" text-anchor="end" fill="#475569">} 1</text>
+  <text x="176" y="532" class="code" font-size="12" text-anchor="start" fill="#94a3b8">gateway_name, listener_name, route_name, route_namespace, hostname, http_path</text>
+
+  <!-- transport caption -->
+  <text x="450" y="578" class="kind" text-anchor="middle" fill="#475569">EXPOSED VIA  Prometheus /metrics   ·   OpenTelemetry gRPC push</text>
+</svg>

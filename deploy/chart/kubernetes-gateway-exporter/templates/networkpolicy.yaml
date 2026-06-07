@@ -1,0 +1,25 @@
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "kubernetes-gateway-exporter.fullname" . }}
+  labels:
+    app: {{ include "kubernetes-gateway-exporter.name" . }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ include "kubernetes-gateway-exporter.name" . }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 8080
+      # By default, we allow traffic on 8080 from anywhere within the cluster (e.g. Prometheus)
+      # In a highly restricted environment, you'd add a 'from' namespaceSelector here.
+  egress:
+    # Allow egress for Kubernetes API and optional OTEL communication.
+    # To lock this down further, specify the exact IP blocks of the control plane and OTEL collector.
+    - {}
+{{- end }}

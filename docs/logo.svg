@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Kubernetes Gateway Exporter logo">
+  <defs>
+    <linearGradient id="ring" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded tile (favicon / avatar safe) -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+
+  <!-- Gateway: hexagon = the Gateway API ingress boundary -->
+  <polygon points="64,22 100,43 100,85 64,106 28,85 28,43"
+           fill="none" stroke="url(#ring)" stroke-width="6.5" stroke-linejoin="round"/>
+
+  <!-- Relationship graph: two parents converge, then emit one metric series -->
+  <!-- edges (drawn first so nodes sit on top) -->
+  <path d="M 47 52 L 64 67 L 81 52" fill="none" stroke="#475569" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 64 67 L 64 90" fill="none" stroke="#475569" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- parent nodes (listener / route) -->
+  <circle cx="47" cy="52" r="6.5" fill="#38bdf8"/>
+  <circle cx="81" cy="52" r="6.5" fill="#38bdf8"/>
+  <!-- resolution join (service / backend) -->
+  <circle cx="64" cy="67" r="6.5" fill="#e2e8f0"/>
+  <!-- emitted metric: the exposed_route_info series -->
+  <circle cx="64" cy="92" r="8.5" fill="#a855f7"/>
+  <circle cx="64" cy="92" r="13" fill="none" stroke="#a855f7" stroke-width="2" opacity="0.35"/>
+</svg>

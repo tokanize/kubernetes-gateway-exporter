@@ -1,0 +1,107 @@
+<div align="center">
+  <img src="./docs/logo.svg" alt="Kubernetes Gateway Exporter logo" width="120"/>
+  <h1>Kubernetes Gateway Exporter</h1>
+  <p><strong>Observability exporter for the Kubernetes Gateway API</strong></p>
+
+  [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go)](https://go.dev/)
+  [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+  [![Kubernetes](https://img.shields.io/badge/Kubernetes-Gateway%20API-326CE5?logo=kubernetes)](https://gateway-api.sigs.k8s.io/)
+</div>
+
+---
+
+## Overview
+
+Kubernetes Gateway Exporter acts as a **Gateway API exposure inventory exporter**. It maps the relationships between `Gateway`, `Listener`, `HTTPRoute`, and `Service` resources to provide visibility into cluster ingress state before traffic is observed.
+
+<div align="center">
+  <img src="./docs/gateway-architecture.svg" alt="Gateway to Listener to HTTPRoute to Service, resolved from informer cache into the exposed_route_info metric" width="720"/>
+</div>
+
+## Features
+
+- **Controller-Runtime Informers:** Uses the native K8s cache instead of polling the API server.
+- **Semantic Resolution:** Evaluates accepted Route parents, listener attachment rules, hostname intersections, ReferenceGrants, and Service backends.
+- **Multi-Protocol:** Prometheus `/metrics` endpoint and OpenTelemetry gRPC push support.
+- **Hardened Runtime:** Distroless image, non-root execution, read-only filesystem, HTTP timeouts, and read-only RBAC.
+- **Provider Independent:** Reads addresses from the standard `Gateway.status.addresses` field without cloud-provider APIs.
+- **Spec-Driven:** Documentation and requirements managed via [OpenSpec](./openspec/specs/).
+
+---
+
+## Quick Start
+
+### Build and Test
+```bash
+make fmt
+make test
+make build
+./bin/exporter
+```
+
+### Deploy
+```bash
+helm upgrade --install gateway-exporter ./deploy/chart/kubernetes-gateway-exporter \
+  --namespace monitoring \
+  --create-namespace
+```
+
+---
+
+## Metrics
+
+The primary metric is `exposed_route_info` (Gauge), which explicitly identifies exactly which route, listener, and hostname produced an exposure relationship.
+
+It describes logical Gateway API routing relationships, not Pod IPs or `EndpointSlice` members. A Service with five backing Pods still produces one series for each valid listener/hostname/path/backend combination, not five Pod-level series.
+
+It includes the following labels:
+- `namespace`: HTTPRoute namespace, retained for backward compatibility.
+- `gateway_name`: Parent Gateway name.
+- `route_name`: `metadata.name` of the HTTPRoute.
+- `route_namespace`: Namespace containing the HTTPRoute.
+- `hostname`: Effective intersection hostname.
+- `listener_name`: Gateway listener attached.
+- `http_path`: Route path match.
+- `service_name`: Backend Service name.
+- `backend_namespace`: Backend namespace.
+- `backend_port`: Target backend port.
+- `lb_type`: `internal` or `external`, heuristically inferred from the GatewayClass name.
+- `ip_address`: First IP from `Gateway.status.addresses`, or an empty string while unavailable.
+
+Users can locate the source YAML producing a specific metric series by running:
+```bash
+kubectl get httproute -n "<route_namespace>" "<route_name>" -o yaml
+```
+
+---
+
+## Documentation Directory
+
+Welcome to the central entrypoint for the Kubernetes Gateway Exporter documentation. All project rules, architectural decisions, and API schemas are maintained across the following sections:
+
+### 1. General & Architecture
+- **[Architecture & Overview](./docs/index.md)**: Conceptual model mapping Gateway -> Listener -> HTTPRoute -> Service.
+- **[Architecture Decision Records (ADRs)](./docs/adrs/)**: Technical design choices and rationales.
+  - [001-k8s-informers.md](./docs/adrs/001-k8s-informers.md)
+  - [002-ip-resolution.md](./docs/adrs/002-ip-resolution.md)
+  - [003-testing-strategy.md](./docs/adrs/003-testing-strategy.md)
+  - [004-otel-metrics.md](./docs/adrs/004-otel-metrics.md)
+  - [005-security.md](./docs/adrs/005-security.md)
+  - [006-metric-labels-expansion.md](./docs/adrs/006-metric-labels-expansion.md)
+
+### 2. APIs & Requirements
+- **[OpenAPI Schema](./docs/api/openapi.yaml)**: Strict structural definition of the metrics API endpoint.
+- **[OpenSpec Requirements](./openspec/specs/)**: Functional requirements driven by BDD scenarios (GIVEN/WHEN/THEN) validating metrics, informers, probes, and IP resolution.
+
+### 3. Agent Instructions
+We employ multi-agent LLM systems to maintain this repository. Agent personas and operational mandates:
+- **[Agent Routing Hub](./AGENTS.md)**: Main hub for automated assistants.
+- **[Gemini Constraints](./GEMINI.md)**
+- **[Codex Constraints](./CODEX.md)**
+- **[Claude Constraints](./CLAUDE.md)**
+
+### 4. Guides
+- **[Testing Locally on kind](./docs/testing-on-kind.md)**: E2E local verification guide mocking Gateway API controller behavior.
+<div align="center">
+  <i>Built by @tokanize to scratch a personal observability itch. Over-engineered? Maybe. Useful? Absolutely.</i>
+</div>

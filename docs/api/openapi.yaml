@@ -1,0 +1,46 @@
+openapi: 3.0.0
+info:
+  title: Kubernetes Gateway Exporter Internal API
+  description: Internal management and health endpoints for the Gateway Exporter.
+  version: 1.0.0
+paths:
+  /healthz:
+    get:
+      summary: Liveness Probe
+      description: Returns 200 OK if the exporter process is alive.
+      responses:
+        '200':
+          description: OK
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "ok"
+  /readyz:
+    get:
+      summary: Readiness Probe
+      description: Returns 200 OK if the informer caches have synced and the exporter is ready to serve metrics.
+      responses:
+        '200':
+          description: Ready
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "ready"
+        '503':
+          description: Service Unavailable (Caches not synced)
+  /metrics:
+    get:
+      summary: Prometheus Metrics
+      description: The Prometheus scraping endpoint.
+      responses:
+        '200':
+          description: Prometheus formatted metrics including `exposed_route_info`.
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: >
+                  The `exposed_route_info` gauge provides inventory of logical Gateway API route-to-Service relationships; it does not enumerate Pods or EndpointSlices.
+                  Labels: `namespace`, `gateway_name`, `route_name`, `route_namespace`, `hostname`, `listener_name`, `http_path`, `service_name`, `backend_namespace`, `backend_port`, `lb_type`, `ip_address`.

@@ -1,0 +1,12 @@
+status:
+  parents:
+  - controllerName: "example.com/gateway-controller"
+    parentRef:
+      name: my-gateway
+    conditions:
+    - type: Accepted
+      status: "True"
+      reason: Accepted
+      message: "Example status payload for kind testing"
+      observedGeneration: 1
+      lastTransitionTime: "2026-06-07T00:00:00Z"

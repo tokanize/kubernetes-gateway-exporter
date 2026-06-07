@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kubernetes-gateway-exporter
+description: A Helm chart for deploying the Kubernetes Gateway Exporter
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
