@@ -46,7 +46,7 @@ make build
 
 From the published OCI chart (signed, see [verification](./docs/verification.md)):
 ```bash
-VERSION=0.1.1 # Replace with the release you want to install
+VERSION=0.1.2 # Replace with the release you want to install
 
 helm upgrade --install gateway-exporter \
   oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version "${VERSION}" \
@@ -104,7 +104,7 @@ binary archives with a signed `checksums.txt`.
 **Quick image signature check:**
 
 ```bash
-VERSION=0.1.1 # Replace with the release you want to verify
+VERSION=0.1.2 # Replace with the release you want to verify
 
 # 1. Resolve an immutable digest for the tag
 IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
