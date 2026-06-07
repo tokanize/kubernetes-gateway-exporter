@@ -123,7 +123,7 @@ jobs:
       # cryptographically verifiable build-provenance record backed by Sigstore
       # and GitHub's OIDC token — no external key material required.
       - name: Attest image provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-name: ghcr.io/tokanize/kubernetes-gateway-exporter
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -227,7 +227,7 @@ jobs:
       # Attest build provenance for the binary archives so downstream consumers
       # can verify which commit and workflow produced each release asset.
       - name: Attest binary provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: dist/kubernetes-gateway-exporter_*.tar.gz
 
