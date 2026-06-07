@@ -1,0 +1,51 @@
+name: CodeQL
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Weekly on Monday at 03:27 UTC — offset from the hour to spread load on GitHub runners
+    - cron: '27 3 * * 1'
+  workflow_dispatch:
+
+# Least-privilege default: all jobs start with read-only token
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (Go)
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to upload SARIF results to the Code scanning dashboard
+      security-events: write
+      # Required for workflows in private repositories to read action metadata
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Set up the correct Go toolchain before CodeQL autobuild so the module
+      # cache and build constraints match the project's go.mod toolchain directive.
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: go
+
+      # autobuild runs `go build ./...` and falls back to a best-effort heuristic;
+      # explicit setup-go above ensures it picks up the right toolchain version.
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
