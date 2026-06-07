@@ -4,9 +4,10 @@ image:
   repository: ghcr.io/tokanize/kubernetes-gateway-exporter
   pullPolicy: IfNotPresent
   # tag defaults to "" so the deployment template falls back to .Chart.AppVersion,
-  # which matches the release tag scheme (e.g. "0.1.0"). Set explicitly to pin
-  # to a specific image digest or tag (e.g. "sha256:...").
+  # which matches the release tag scheme (e.g. "0.1.0").
   tag: ""
+  # When set, digest takes precedence over tag and renders repository@digest.
+  digest: ""
 
 serviceAccount:
   create: true
@@ -19,6 +20,10 @@ networkPolicy:
 podSecurityContext:
   runAsNonRoot: true
   runAsUser: 65532
+  runAsGroup: 65532
+  fsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
 
 securityContext:
   allowPrivilegeEscalation: false

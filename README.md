@@ -97,14 +97,16 @@ kubectl get httproute -n "$ROUTE_NAMESPACE" "$ROUTE_NAME" -o yaml
 Each release publishes multi-arch container images to
 `ghcr.io/tokanize/kubernetes-gateway-exporter`, signed by digest with cosign
 keyless signing (GitHub OIDC — no long-lived keys). Every release also includes
-GitHub Artifact Attestation (build provenance) for both the image and binary
-archives, SPDX SBOMs (`sbom-image.spdx.json`, `sbom-source.spdx.json`), and
-binary archives with a signed `checksums.txt`.
+GitHub Artifact Attestations (build provenance) for the image, chart, binary
+archives, and SBOMs. SPDX SBOMs (`sbom-image.spdx.json`,
+`sbom-source.spdx.json`) and binary archives are covered by a signed
+`checksums.txt` in releases produced by the hardened workflow.
 
 **Quick image signature check:**
 
 ```bash
 VERSION=0.1.2 # Replace with the release you want to verify
+SOURCE_REF="refs/tags/v${VERSION}"
 
 # 1. Resolve an immutable digest for the tag
 IMAGE=ghcr.io/tokanize/kubernetes-gateway-exporter
@@ -113,7 +115,7 @@ DIGEST=$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" \
 
 # 2. Verify the cosign signature
 cosign verify \
-  --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
+  --certificate-identity "https://github.com/tokanize/kubernetes-gateway-exporter/.github/workflows/release.yml@${SOURCE_REF}" \
   --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
   "${IMAGE}@${DIGEST}"
 ```
@@ -137,12 +139,7 @@ Welcome to the central entrypoint for the Kubernetes Gateway Exporter documentat
 ### 1. General & Architecture
 - **[Architecture & Overview](./docs/index.md)**: Conceptual model mapping Gateway -> Listener -> HTTPRoute -> Service.
 - **[Architecture Decision Records (ADRs)](./docs/adrs/)**: Technical design choices and rationales.
-  - [001-k8s-informers.md](./docs/adrs/001-k8s-informers.md)
-  - [002-ip-resolution.md](./docs/adrs/002-ip-resolution.md)
-  - [003-testing-strategy.md](./docs/adrs/003-testing-strategy.md)
-  - [004-otel-metrics.md](./docs/adrs/004-otel-metrics.md)
-  - [005-security.md](./docs/adrs/005-security.md)
-  - [006-metric-labels-expansion.md](./docs/adrs/006-metric-labels-expansion.md)
+
 
 ### 2. APIs & Requirements
 - **[OpenAPI Schema](./docs/api/openapi.yaml)**: Strict structural definition of the metrics API endpoint.

@@ -18,10 +18,65 @@ concurrency:
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Job A: Build, push, sign, SBOM, and attest the container image.
+  # Job A: Re-run every release gate before publishing any artifact.
+  # ---------------------------------------------------------------------------
+  validate:
+    name: Validate release source
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Set up Helm
+        uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
+
+      - name: Validate release ref
+        run: |
+          if [[ ! "$GITHUB_REF" =~ ^refs/tags/v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Release workflow requires a semantic v-prefixed tag, got: $GITHUB_REF" >&2
+            exit 1
+          fi
+
+      - name: Run source validation
+        run: |
+          make fmt-check
+          make vet
+          make staticcheck
+          make tidy-check
+          make test
+          make helm-lint
+
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.3.0 ./...
+
+      - name: Trivy repository gate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+  # ---------------------------------------------------------------------------
+  # Job B: Build, scan, promote, sign, SBOM, and attest the container image.
   # ---------------------------------------------------------------------------
   image:
     name: Build, push & sign image
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,16 +90,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-
-      - name: Set up Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version-file: go.mod
-          cache: true
-
-      # Run tests as a release gate: fail early before we publish anything.
-      - name: Run tests
-        run: go test ./...
+          persist-credentials: false
 
       # QEMU allows the buildx builder to emulate non-native architectures
       # (e.g. arm64 on an amd64 GitHub-hosted runner).
@@ -78,21 +125,56 @@ jobs:
             type=sha,format=long
             type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
-      # Build and push a multi-arch image.
+      # Build the multi-arch image once and push it under a quarantine-only tag.
+      # Release aliases are assigned to the exact digest only after the scan.
       # provenance: false — we disable buildx's embedded provenance here because
       # it produces an image-index manifest that is difficult to verify
       # independently.  We attach a proper, verifiable GitHub Artifact
       # Attestation in the step below instead.
-      - name: Build and push image
+      - name: Build and push quarantine image
         id: build
         uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ghcr.io/tokanize/kubernetes-gateway-exporter:quarantine-${{ github.run_id }}-${{ github.run_attempt }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: false
+
+      - name: Trivy quarantine image gate
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: image
+          image-ref: ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}
+          format: table
+          scanners: vuln,secret,misconfig
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Promote scanned digest to release tags
+        env:
+          IMAGE: ghcr.io/tokanize/kubernetes-gateway-exporter
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          mapfile -t tags <<< "$TAGS"
+          tag_args=()
+          for tag in "${tags[@]}"; do
+            [[ -n "$tag" ]] && tag_args+=(--tag "$tag")
+          done
+          docker buildx imagetools create "${tag_args[@]}" "${IMAGE}@${DIGEST}"
+
+          for tag in "${tags[@]}"; do
+            [[ -z "$tag" ]] && continue
+            promoted_digest=$(docker buildx imagetools inspect "$tag" \
+              --format '{{json .}}' | jq -r '.manifest.digest')
+            if [[ "$promoted_digest" != "$DIGEST" ]]; then
+              echo "Promoted tag $tag resolved to $promoted_digest, expected $DIGEST" >&2
+              exit 1
+            fi
+          done
 
       - name: Install cosign
         uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
@@ -100,9 +182,11 @@ jobs:
       # Sign by digest rather than a mutable tag so the signature is
       # permanently bound to the exact image content.
       - name: Sign image (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes \
-            ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}
+            "ghcr.io/tokanize/kubernetes-gateway-exporter@${DIGEST}"
 
       # Generate an SPDX SBOM for the pushed image. The artifact is uploaded
       # here and attached to the GitHub Release in the release job.
@@ -120,6 +204,11 @@ jobs:
           name: sbom-image
           path: sbom-image.spdx.json
 
+      - name: Attest image SBOM provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
+        with:
+          subject-path: sbom-image.spdx.json
+
       # Attach a GitHub Artifact Attestation to the image.  This produces a
       # cryptographically verifiable build-provenance record backed by Sigstore
       # and GitHub's OIDC token — no external key material required.
@@ -130,9 +219,9 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
-      # Scan the published image (by digest) and block the release on fixable
-      # CRITICAL vulnerabilities — same threshold rationale as the CI fs scan.
-      - name: Trivy image scan — gate on fixable CRITICAL vulns
+      # Re-check the promoted digest. This catches registry/tagging mistakes and
+      # proves the public release aliases still resolve to the scanned content.
+      - name: Trivy promoted image verification
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
@@ -144,20 +233,25 @@ jobs:
           exit-code: '1'
 
       - name: Write summary
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
-          echo "## Container image published" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Digest:** \`${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "**Full ref:** \`ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "Verify with: \`cosign verify ghcr.io/tokanize/kubernetes-gateway-exporter@${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Container image published"
+            echo ""
+            echo "**Digest:** \`${DIGEST}\`"
+            echo ""
+            echo "**Full ref:** \`ghcr.io/tokanize/kubernetes-gateway-exporter@${DIGEST}\`"
+            echo ""
+            echo "Verify with: \`cosign verify ghcr.io/tokanize/kubernetes-gateway-exporter@${DIGEST}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
-  # Job B: Cross-compile static binaries, sign checksums, generate source SBOM.
+  # Job C: Cross-compile static binaries and generate the source SBOM.
   # ---------------------------------------------------------------------------
   binaries:
-    name: Build, sign & attest binaries
+    name: Build & attest binaries
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -167,12 +261,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
           go-version-file: go.mod
-          cache: true
+          cache: false
 
       # Build static binaries for all target platforms.
       # NOTE: main.go does not declare a `var version`, so we omit -X ldflags.
@@ -180,7 +276,7 @@ jobs:
       # and Alpine-based images without libc assumptions.
       - name: Build binaries
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="$GITHUB_REF_NAME"
           declare -A targets=(
             ["linux/amd64"]="linux_amd64"
             ["linux/arm64"]="linux_arm64"
@@ -204,28 +300,6 @@ jobs:
             echo "  -> dist/${ARCHIVE}"
           done
 
-      - name: Generate checksums
-        working-directory: dist
-        run: |
-          sha256sum kubernetes-gateway-exporter_*.tar.gz > checksums.txt
-          echo "Checksums:"
-          cat checksums.txt
-
-      - name: Install cosign
-        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
-
-      # Sign the checksums file as a blob using keyless Sigstore signing.
-      # Consumers can verify any binary by: checking its SHA-256 against
-      # checksums.txt, then verifying checksums.txt.sig + checksums.txt.pem
-      # with cosign verify-blob.
-      - name: Sign checksums (keyless)
-        working-directory: dist
-        run: |
-          cosign sign-blob --yes \
-            --output-signature checksums.txt.sig \
-            --output-certificate checksums.txt.pem \
-            checksums.txt
-
       # Generate an SPDX SBOM for the Go module / source tree.
       - name: Generate source SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
@@ -245,22 +319,25 @@ jobs:
         with:
           subject-path: dist/kubernetes-gateway-exporter_*.tar.gz
 
+      - name: Attest source SBOM provenance
+        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
+        with:
+          subject-path: dist/sbom-source.spdx.json
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-artifacts
           path: |
             dist/kubernetes-gateway-exporter_*.tar.gz
-            dist/checksums.txt
-            dist/checksums.txt.sig
-            dist/checksums.txt.pem
             dist/sbom-source.spdx.json
 
   # ---------------------------------------------------------------------------
-  # Job C: Package, push, sign and attest the Helm chart as an OCI artifact.
+  # Job D: Package, push, sign and attest the Helm chart as an OCI artifact.
   # ---------------------------------------------------------------------------
   chart:
     name: Package, push & sign Helm chart
+    needs: validate
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -271,6 +348,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Helm
         uses: azure/setup-helm@dda3372f752e03dde6b3237bc9431cdc2f7a02a2 # v5
@@ -286,17 +365,20 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to GHCR (Helm OCI registry)
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           helm registry login ghcr.io \
-            --username "${{ github.actor }}" \
-            --password "${{ secrets.GITHUB_TOKEN }}"
+            --username "$GHCR_USERNAME" \
+            --password "$GHCR_PASSWORD"
 
       # Override chart version + appVersion with the release tag (strip leading
       # 'v') so the published chart version always tracks the release.
       - name: Package and push chart
         id: push
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="$GITHUB_REF_NAME"
           CHART_VERSION="${VERSION#v}"
           helm package deploy/chart/kubernetes-gateway-exporter \
             --version "${CHART_VERSION}" --app-version "${CHART_VERSION}"
@@ -308,9 +390,11 @@ jobs:
 
       # Sign the chart by digest (immutable), same keyless flow as the image.
       - name: Sign chart (keyless)
+        env:
+          CHART_DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           cosign sign --yes \
-            ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${{ steps.push.outputs.digest }}
+            "ghcr.io/tokanize/charts/kubernetes-gateway-exporter@${CHART_DIGEST}"
 
       - name: Attest chart provenance
         uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4
@@ -320,17 +404,19 @@ jobs:
           push-to-registry: true
 
       - name: Write summary
+        env:
+          CHART_DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           {
             echo "## Helm chart published"
             echo ""
-            echo "\`oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter\` @ \`${{ steps.push.outputs.digest }}\`"
+            echo "\`oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter\` @ \`${CHART_DIGEST}\`"
             echo ""
             echo "Install: \`helm install gateway-exporter oci://ghcr.io/tokanize/charts/kubernetes-gateway-exporter --version ${GITHUB_REF_NAME#v}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
   # ---------------------------------------------------------------------------
-  # Job D: Create the GitHub Release and attach all assets.
+  # Job E: Sign the complete artifact set and publish the GitHub Release.
   # ---------------------------------------------------------------------------
   release:
     name: Publish GitHub Release
@@ -338,6 +424,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write   # create release + upload assets
+      id-token: write   # cosign keyless signature for the final checksum file
 
     steps:
       - name: Download release artifacts (binaries job)
@@ -352,59 +439,83 @@ jobs:
           name: sbom-image
           path: release-assets
 
+      - name: Generate final checksums
+        working-directory: release-assets
+        run: |
+          find . -maxdepth 1 -type f -printf '%f\n' \
+            | LC_ALL=C sort \
+            | xargs sha256sum > checksums.txt
+          cat checksums.txt
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Sign final checksums (keyless)
+        working-directory: release-assets
+        run: |
+          cosign sign-blob --yes \
+            --output-signature checksums.txt.sig \
+            --output-certificate checksums.txt.pem \
+            checksums.txt
+
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
-        with:
-          # Tags containing a hyphen (e.g. v0.1.0-rc1) are marked as prereleases.
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          files: |
-            release-assets/kubernetes-gateway-exporter_*.tar.gz
-            release-assets/checksums.txt
-            release-assets/checksums.txt.sig
-            release-assets/checksums.txt.pem
-            release-assets/sbom-image.spdx.json
-            release-assets/sbom-source.spdx.json
-          body: |
-            ## kubernetes-gateway-exporter ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE_DIGEST: ${{ needs.image.outputs.digest }}
+          SOURCE_DIGEST: ${{ github.sha }}
+        run: |
+          cat > release-notes.md <<EOF
+          ## kubernetes-gateway-exporter ${GITHUB_REF_NAME}
 
-            ### Container image
+          ### Container image
 
-            ```
-            ghcr.io/tokanize/kubernetes-gateway-exporter@${{ needs.image.outputs.digest }}
-            ```
+          \`\`\`
+          ghcr.io/tokanize/kubernetes-gateway-exporter@${IMAGE_DIGEST}
+          \`\`\`
 
-            The image is also available via the semver tag:
-            ```
-            ghcr.io/tokanize/kubernetes-gateway-exporter:${{ github.ref_name }}
-            ```
+          The image is also available via the semver tag:
+          \`\`\`
+          ghcr.io/tokanize/kubernetes-gateway-exporter:${GITHUB_REF_NAME}
+          \`\`\`
 
-            ### Supply-chain security
+          ### Supply-chain security
 
-            **Image signing** — The container image is signed with [Sigstore cosign](https://docs.sigstore.dev/) using keyless (OIDC-based) signing. Verify with:
-            ```
-            cosign verify \
-              --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              ghcr.io/tokanize/kubernetes-gateway-exporter@${{ needs.image.outputs.digest }}
-            ```
+          **Image signing** — The image is signed with Sigstore cosign using GitHub OIDC. Verify with:
+          \`\`\`
+          cosign verify \\
+            --certificate-identity "https://github.com/tokanize/kubernetes-gateway-exporter/.github/workflows/release.yml@${GITHUB_REF}" \\
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \\
+            ghcr.io/tokanize/kubernetes-gateway-exporter@${IMAGE_DIGEST}
+          \`\`\`
 
-            **Build provenance attestation** — A build-provenance attestation (SLSA-style provenance) for both the container image and the binary archives is stored via [GitHub Artifact Attestations](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds). Verify with:
-            ```
-            gh attestation verify \
-              oci://ghcr.io/tokanize/kubernetes-gateway-exporter@${{ needs.image.outputs.digest }} \
-              --owner tokanize
-            ```
+          **Build provenance** — Attestations cover the image, chart, binary archives, and SBOMs. Verify the image against this exact release source with:
+          \`\`\`
+          gh attestation verify \\
+            oci://ghcr.io/tokanize/kubernetes-gateway-exporter@${IMAGE_DIGEST} \\
+            --repo tokanize/kubernetes-gateway-exporter \\
+            --signer-workflow tokanize/kubernetes-gateway-exporter/.github/workflows/release.yml \\
+            --source-ref ${GITHUB_REF} \\
+            --source-digest ${SOURCE_DIGEST}
+          \`\`\`
 
-            **Checksums** — SHA-256 checksums for all binary archives are in `checksums.txt`. The checksums file itself is signed with cosign keyless (`checksums.txt.sig` + `checksums.txt.pem`). cosign v2 requires the signer identity, so verify with:
-            ```
-            cosign verify-blob \
-              --certificate-identity-regexp "https://github.com/tokanize/kubernetes-gateway-exporter" \
-              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-              --signature checksums.txt.sig \
-              --certificate checksums.txt.pem \
-              checksums.txt
-            ```
+          **Checksums** — \`checksums.txt\` covers every binary archive and both SBOMs and is signed with cosign keyless signing.
 
-            **SBOMs** — SPDX JSON software bills of materials are attached for both the container image (`sbom-image.spdx.json`) and the Go module source tree (`sbom-source.spdx.json`).
+          **SBOMs** — SPDX JSON SBOMs are attached for the image and source tree, covered by the signed checksum manifest, and separately attested.
 
-            > Note: This release makes no specific SLSA level claim. The above attestations are generated by GitHub Actions using Sigstore keyless signing.
+          > This release makes no specific SLSA level claim. Signatures and attestations establish origin and integrity, not vulnerability-free software.
+          EOF
+
+          prerelease_args=()
+          [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease_args+=(--prerelease)
+
+          gh release create "$GITHUB_REF_NAME" \
+            release-assets/kubernetes-gateway-exporter_*.tar.gz \
+            release-assets/checksums.txt \
+            release-assets/checksums.txt.sig \
+            release-assets/checksums.txt.pem \
+            release-assets/sbom-image.spdx.json \
+            release-assets/sbom-source.spdx.json \
+            --verify-tag \
+            --title "kubernetes-gateway-exporter ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md \
+            "${prerelease_args[@]}"

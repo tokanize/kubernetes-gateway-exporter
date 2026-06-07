@@ -1,6 +1,5 @@
-# Dependabot keeps version-tag-pinned GitHub Actions and base images current,
-# complementing the explicit version-tag pinning strategy documented in
-# docs/security-scanning.md. Weekly cadence balances freshness against PR noise.
+# Dependabot keeps commit-SHA-pinned GitHub Actions, digest-pinned base images,
+# and Go modules current. Weekly cadence balances freshness against PR noise.
 #
 # `groups` collapse all updates within an ecosystem into a single PR per run,
 # so an action/dependency bump wave arrives as one reviewable PR, not dozens.
@@ -17,7 +16,7 @@ updates:
       go-modules:
         patterns: ["*"]
 
-  # GitHub Actions (keeps action version tags and SHA pins current)
+  # GitHub Actions (keeps immutable SHA pins current)
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
