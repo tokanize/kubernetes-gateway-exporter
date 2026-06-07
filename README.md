@@ -15,7 +15,7 @@
 
 ## Overview
 
-Kubernetes Gateway Exporter acts as a **Gateway API exposure inventory exporter**. It maps the relationships between `Gateway`, `Listener`, `HTTPRoute`, and `Service` resources to provide visibility into cluster ingress state before traffic is observed.
+Gateway API exposure-inventory exporter for Kubernetes — maps Gateway→Listener→HTTPRoute→Service into the `exposed_route_info` Prometheus/OTel metric, with signed, provenance-attested releases.
 
 <div align="center">
   <img src="./docs/gateway-architecture.svg" alt="Gateway to Listener to HTTPRoute to Service, resolved from informer cache into the exposed_route_info metric" width="720"/>
