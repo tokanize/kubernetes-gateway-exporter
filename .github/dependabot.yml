@@ -1,0 +1,26 @@
+# Dependabot keeps version-tag-pinned GitHub Actions and base images current,
+# complementing the explicit version-tag pinning strategy documented in
+# docs/security-scanning.md. Weekly cadence balances freshness against PR noise.
+version: 2
+
+updates:
+  # Go module dependencies
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # GitHub Actions (keeps action version tags and SHA pins current)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+
+  # Docker base images in the Dockerfile
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
