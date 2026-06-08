@@ -49,7 +49,7 @@ If the pre-promotion scan fails, the quarantine object can remain addressable in
 
 The [OpenSSF Scorecard](https://securityscorecards.dev) evaluates the repository's security hygiene across a set of automated checks (pinned dependencies, branch protection, signed releases, CI presence, etc.) and produces a score from 0–10. Results are published to the OpenSSF public API (powering the Scorecard badge) and uploaded to Code scanning as SARIF.
 
-Scorecard runs only on pushes to the default branch and on the weekly schedule. Running it on pull requests would analyse a transient merge ref rather than the published repository state, making results less meaningful.
+Scorecard runs only on pushes to the default branch and on the weekly schedule. Running it on pull requests would analyze a transient merge ref rather than the published repository state, making results less meaningful.
 
 ## Immutable dependency pins
 

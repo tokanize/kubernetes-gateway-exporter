@@ -1,50 +1,58 @@
-# Kubernetes Gateway Exporter Documentation
+# Architecture
 
-Welcome to the internal documentation for the **Kubernetes Gateway Exporter**. This repository provides an inventory of logical routing relationships exposed through Kubernetes Gateway API resources.
+The **Kubernetes Gateway Exporter** publishes an inventory of the routing
+relationships your Gateway API resources define. For every accepted route it
+answers one question — *what is exposed, where, and how?* — and emits the answer
+as the `exposed_route_info` metric for Prometheus and OpenTelemetry.
 
-## Core Traceability Map
+## How it works
 
-This project adheres strictly to the "Docs-First" rule. No core application logic is written without architectural justification. Every core component in the Go source code links back to the documents listed here.
+The exporter watches Gateway API resources through cache-backed informers and
+resolves the relationship chain:
 
-> **Note on Documentation Strategy:** This repository uses a hybrid documentation approach. 
-> - **[OpenSpec (`openspec/specs/`)](../openspec/specs/)** defines the functional requirements.
-> - **[ADRs (`docs/adrs/`)](./adrs/)** define the technical architecture and decisions.
-> The functional specs actively link to their corresponding technical ADRs.
+`Gateway → Listener → HTTPRoute → Service`
 
-### Architecture Decision Records (ADRs)
+<img src="./gateway-architecture.svg"
+     alt="Gateway to Listener to HTTPRoute to Service, resolved from the informer cache into the exposed_route_info metric"
+     style="max-width: 720px; width: 100%; margin: 1.5rem 0;" />
 
-*   [ADR-001: Kubernetes Informers Strategy](./adrs/001-k8s-informers.md) - Details the choice of using cache-backed informers for resource mapping.
-*   [ADR-002: Gateway Address Resolution](./adrs/002-ip-resolution.md) - Explains portable address extraction from `Gateway.status.addresses`.
-*   [ADR-003: Testing Strategy](./adrs/003-testing-strategy.md) - Defines table-driven mapping tests and Prometheus contract tests.
-*   [ADR-004: OpenTelemetry Strategy](./adrs/004-otel-metrics.md) - Explains the OTLP push model and Observable Gauge implementation for OTEL.
-*   [ADR-005: Security Hardening](./adrs/005-security.md) - Documents HTTP timeouts (Slowloris protection), distroless containers, and future recommendations.
-*   [ADR-006: Exposure Metric Identity](./adrs/006-metric-labels-expansion.md) - Defines the flattened Gateway API relationship and metric labels.
+It maps the **logical** routing graph only. It does not enumerate Pods, Pod IPs,
+Endpoints, or EndpointSlices behind a Service — a Service with five backing Pods
+still produces one series per valid listener / hostname / path / backend
+combination, not five Pod-level series.
 
-### API Specifications
+For the complete label set and configuration, see the
+[Metrics reference](./metrics.md).
 
-*   [OpenAPI 3.0 Specification](./api/openapi.yaml) - Defines the internal management and health endpoints exposed by the exporter (`/healthz`, `/readyz`, `/metrics`).
+## Documentation strategy
 
-### Operational Guides
+This repository uses a hybrid documentation approach:
 
-*   [Testing locally on kind](./testing-on-kind.md) - Builds and verifies the exporter without installing a Gateway controller.
+- **OpenSpec** (`openspec/specs/`) defines the functional requirements as
+  GIVEN / WHEN / THEN scenarios.
+- **ADRs** (`docs/adrs/`) capture the technical architecture and the reasoning
+  behind each decision.
 
-### Key Domain Relationships
+The functional specs link to their corresponding technical ADRs, so every core
+component in the Go source traces back to a recorded decision.
 
-The core logic of this exporter resolves the following relationship chain using Kubernetes informers:
-`Gateway` -> `Listener` -> `HTTPRoute` -> `Service`
+## Architecture Decision Records
 
-The metric represents logical routing relationships. It does not enumerate Pods, Pod IPs, Endpoints, or EndpointSlices behind a Service.
+- [ADR-001: Kubernetes Informers Strategy](./adrs/001-k8s-informers.md) — cache-backed informers for resource mapping.
+- [ADR-002: Gateway Address Resolution](./adrs/002-ip-resolution.md) — portable address extraction from `Gateway.status.addresses`.
+- [ADR-003: Testing Strategy](./adrs/003-testing-strategy.md) — table-driven mapping tests and Prometheus contract tests.
+- [ADR-004: OpenTelemetry Metrics](./adrs/004-otel-metrics.md) — the OTLP push model and Observable Gauge implementation.
+- [ADR-005: Security Hardening](./adrs/005-security.md) — HTTP timeouts, distroless containers, and runtime hardening.
+- [ADR-006: Exposure Metric Identity](./adrs/006-metric-labels-expansion.md) — the flattened Gateway API relationship and its metric labels.
 
-Labels exposed by the resulting Prometheus metric (`exposed_route_info`):
-*   `namespace`
-*   `gateway_name`
-*   `route_name`
-*   `route_namespace`
-*   `hostname`
-*   `listener_name`
-*   `http_path`
-*   `service_name`
-*   `backend_namespace`
-*   `backend_port`
-*   `lb_type` (`internal` or `external`, heuristically inferred from the GatewayClass name)
-*   `ip_address` (read from `Gateway.status.addresses`)
+## API specification
+
+The [OpenAPI 3.0 specification](https://github.com/tokanize/kubernetes-gateway-exporter/blob/main/docs/api/openapi.yaml)
+defines the management and health endpoints exposed by the exporter
+(`/healthz`, `/readyz`, `/metrics`).
+
+## Further reading
+
+- [Getting Started](./getting-started.md) — install with Helm and confirm the metric is served.
+- [Testing on kind](./testing-on-kind.md) — verify the exporter without a Gateway controller.
+- [OpenSpec requirements](https://github.com/tokanize/kubernetes-gateway-exporter/tree/main/openspec/specs) — functional specs that drive the implementation.

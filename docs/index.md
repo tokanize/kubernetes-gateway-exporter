@@ -3,32 +3,35 @@ layout: home
 
 hero:
   name: "Kubernetes Gateway Exporter"
-  text: "Exposure Inventory & Telemetry"
-  tagline: "Maps Gateway API routes to Prometheus and OpenTelemetry metrics with native SLSA Level 3 security."
+  text: "See exactly what your Gateway API exposes"
+  tagline: "Turns Gateway → Listener → HTTPRoute → Service relationships into Prometheus and OpenTelemetry metrics — with SLSA Level 3 supply-chain provenance built in."
   image:
     src: /logo.svg
     alt: Kubernetes Gateway Exporter
   actions:
     - theme: brand
-      text: View Architecture
+      text: Get Started
+      link: /getting-started
+    - theme: alt
+      text: Architecture
       link: /architecture
     - theme: alt
-      text: View on GitHub
+      text: GitHub
       link: https://github.com/tokanize/kubernetes-gateway-exporter
 
 features:
-  - title: 🌐 Gateway API Native
-    details: Automatically maps Gateway → Listener → HTTPRoute → Service relationships and exposes them as Prometheus gauges.
-  - title: 📊 OTLP / OpenTelemetry
-    details: Supports native pushing via gRPC to OpenTelemetry Collectors alongside standard Prometheus /metrics scraping.
+  - title: 🌐 Gateway API-native
+    details: Resolves Gateway → Listener → HTTPRoute → Service relationships from the live cluster and exposes them as Prometheus gauges.
+  - title: 📊 OpenTelemetry & OTLP
+    details: Pushes metrics natively over OTLP/gRPC to an OpenTelemetry Collector, alongside the standard Prometheus /metrics scrape endpoint.
   - title: 🛡️ SLSA Level 3
-    details: Cryptographically signed artifacts (Cosign), keyless OIDC attestations, and full SBOMs for every release.
-  - title: 🚀 Zero Noise
-    details: Cache-backed Kubernetes Informers with minimal RBAC privileges ensure high performance and low API server load.
-  - title: 🔍 Cross-Namespace Ready
-    details: Seamlessly resolves complex networking topologies including ReferenceGrants for cross-namespace routing.
-  - title: ✅ CI/CD Hardened
-    details: Integrated Trivy scanning, Govulncheck call-graph analysis, and OSSF Scorecard validations.
+    details: Every release ships Cosign-signed artifacts, keyless OIDC attestations, and full SPDX SBOMs.
+  - title: ⚡ Low Overhead
+    details: Cache-backed Kubernetes informers and least-privilege RBAC keep API-server load and memory footprint minimal.
+  - title: 🔗 Cross-namespace aware
+    details: Resolves cross-namespace routing through ReferenceGrants, so multi-team topologies map correctly.
+  - title: ✅ Hardened CI/CD
+    details: Trivy, govulncheck call-graph analysis, CodeQL, and OpenSSF Scorecard run on every change.
 ---
 
 <div class="glow-container">

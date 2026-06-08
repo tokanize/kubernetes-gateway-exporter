@@ -5,6 +5,11 @@
   --vp-c-brand-soft: rgba(59, 130, 246, 0.16);
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #3b82f6, #8b5cf6);
+
+  /* Set the base font through VitePress's own variable so it actually applies.
+     Inter is loaded via a <link> in .vitepress/config.mjs (head). */
+  --vp-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Helvetica Neue", sans-serif;
 }
 
 .dark {
@@ -14,26 +19,32 @@
   --vp-home-hero-name-background: -webkit-linear-gradient(120deg, #60a5fa, #a78bfa);
 }
 
-/* Glassmorphism for features */
+/* --- Glassmorphism for feature cards ---
+   backdrop-filter only shows if the card's own background is translucent;
+   an opaque background would simply paint over the blurred backdrop. */
 .VPFeature {
-  background: var(--vp-c-bg-soft);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.dark .VPFeature {
+  background: rgba(23, 23, 23, 0.55);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
 .VPFeature:hover {
   transform: translateY(-5px);
-  box-shadow: 0 10px 30px -10px rgba(96, 165, 250, 0.3);
+  border-color: var(--vp-c-brand-2);
+  box-shadow: 0 12px 32px -12px rgba(96, 165, 250, 0.45);
 }
 
-/* Background glows */
+/* --- Ambient background glows (home page only) --- */
 .glow-container {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
+  inset: 0;
   z-index: -1;
   pointer-events: none;
   overflow: hidden;
@@ -43,11 +54,11 @@
   position: absolute;
   border-radius: 50%;
   filter: blur(100px);
-  opacity: 0.15;
+  opacity: 0.18;
 }
 
 .dark .glow {
-  opacity: 0.25;
+  opacity: 0.28;
 }
 
 .glow-1 {
@@ -78,7 +89,22 @@
   100% { transform: translate(-10%, -10%); }
 }
 
-/* Typography tweaks */
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+/* --- Mobile: cheaper blur radius to reduce scroll repaint cost --- */
+@media (max-width: 768px) {
+  .glow {
+    filter: blur(60px);
+  }
+}
+
+/* --- Accessibility: respect users who ask for less motion --- */
+@media (prefers-reduced-motion: reduce) {
+  .glow {
+    animation: none;
+  }
+  .VPFeature {
+    transition: none;
+  }
+  .VPFeature:hover {
+    transform: none;
+  }
 }

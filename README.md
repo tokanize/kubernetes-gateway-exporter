@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./docs/logo.svg" alt="Kubernetes Gateway Exporter logo" width="120"/>
+  <img src="./docs/public/logo.svg" alt="Kubernetes Gateway Exporter logo" width="120"/>
   <h1>Kubernetes Gateway Exporter</h1>
   <p><strong>Observability exporter for the Kubernetes Gateway API</strong></p>
 

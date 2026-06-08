@@ -64,7 +64,7 @@ kubectl logs -n monitoring -l app=kubernetes-gateway-exporter
 
 ## 4. Create the test resources
 
-The repository contains [`examples/dummy-resources.yaml`](../examples/dummy-resources.yaml), which creates namespace `test-ns`, Service `test-svc`, GatewayClass `my-gc`, Gateway `my-gateway`, and HTTPRoute `my-route` matching `/api`.
+The repository contains [`examples/dummy-resources.yaml`](https://github.com/tokanize/kubernetes-gateway-exporter/blob/main/examples/dummy-resources.yaml), which creates namespace `test-ns`, Service `test-svc`, GatewayClass `my-gc`, Gateway `my-gateway`, and HTTPRoute `my-route` matching `/api`.
 
 ```bash
 kubectl apply -f examples/dummy-resources.yaml
@@ -95,7 +95,7 @@ Verify the status:
 kubectl get httproute my-route -n test-ns -o yaml
 ```
 
-The tracked [`examples/patch-route.yaml`](../examples/patch-route.yaml) is an example status payload. The dynamic command is preferred because Route generation may change after edits.
+The tracked [`examples/patch-route.yaml`](https://github.com/tokanize/kubernetes-gateway-exporter/blob/main/examples/patch-route.yaml) is an example status payload. The dynamic command is preferred because Route generation may change after edits.
 
 ## 6. Verify the metric
 
