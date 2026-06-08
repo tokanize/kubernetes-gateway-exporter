@@ -11,5 +11,8 @@
     "@fontsource/inter": "^5.2.8",
     "vitepress": "^1.4.0",
     "vue": "^3.4.0"
+  },
+  "overrides": {
+    "esbuild": "^0.25.0"
   }
 }
