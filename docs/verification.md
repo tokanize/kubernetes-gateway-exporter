@@ -250,11 +250,11 @@ Setting `image.digest` makes the rendered Deployment use
   described in [docs/security-scanning.md](./security-scanning.md) for that.
 - That your deployment environment is correctly configured or secured.
 - That the Gateway API exposure model implemented here is policy-compliant for
-  your organisation's specific requirements.
+  your organization's specific requirements.
 - That a signed artifact is safe merely because the official workflow produced
   it. Signatures authenticate origin and integrity, not correctness.
 
 ---
 
 *Questions or concerns about a specific release? Open an issue or see
-[SECURITY.md](../SECURITY.md) for the vulnerability reporting process.*
+[SECURITY.md](https://github.com/tokanize/kubernetes-gateway-exporter/blob/main/SECURITY.md) for the vulnerability reporting process.*

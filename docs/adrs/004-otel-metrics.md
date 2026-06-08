@@ -1,4 +1,4 @@
-# ADR-004: OpenTelemetry (OTEL) Metrics Support
+# ADR-004: OpenTelemetry Metrics
 
 **Date:** 2026-06-06  
 **Status:** Accepted
