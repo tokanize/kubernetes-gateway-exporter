@@ -17,6 +17,8 @@
 
 Gateway API exposure-inventory exporter for Kubernetes — maps Gateway→Listener→HTTPRoute→Service into the `exposed_route_info` Prometheus/OTel metric.
 
+**Automatically discover and monitor all your externally exposed Kubernetes services. Gain visibility into your external attack surface by tracking every exposed endpoint and service via Gateway API.**
+
 <div align="center">
   <img src="./docs/gateway-architecture.svg" alt="Gateway to Listener to HTTPRoute to Service, resolved from informer cache into the exposed_route_info metric" width="720"/>
 </div>

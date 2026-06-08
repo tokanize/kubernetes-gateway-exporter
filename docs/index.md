@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Kubernetes Gateway Exporter"
   text: "See exactly what your Gateway API exposes"
-  tagline: "Turns Gateway → Listener → HTTPRoute → Service relationships into Prometheus and OpenTelemetry metrics — with SLSA Level 3 supply-chain provenance built in."
+  tagline: "Automatically discover and monitor all your externally exposed Kubernetes services. Gain visibility into your external attack surface by tracking every exposed endpoint and service via Gateway API."
   image:
     src: /logo.svg
     alt: Kubernetes Gateway Exporter
