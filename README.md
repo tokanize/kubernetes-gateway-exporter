@@ -9,6 +9,7 @@
   [![CI](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/ci.yml)
   [![CodeQL](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml)
   [![govulncheck](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml)
+  [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://tokanize.github.io/kubernetes-gateway-exporter/)
 </div>
 
 ---
