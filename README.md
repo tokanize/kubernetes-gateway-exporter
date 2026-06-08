@@ -161,5 +161,5 @@ We employ multi-agent LLM systems to maintain this repository. Agent personas an
 ### 5. Guides
 - **[Testing Locally on kind](./docs/testing-on-kind.md)**: E2E local verification guide mocking Gateway API controller behavior.
 <div align="center">
-  <i>Built by @tokanize to scratch a personal observability itch. Over-engineered? Maybe. Useful? Absolutely.</i>
+  <i>Built by <a href="https://github.com/tokanize">@tokanize</a> to scratch a personal observability itch. Over-engineered? Maybe. Useful? Absolutely.</i>
 </div>
