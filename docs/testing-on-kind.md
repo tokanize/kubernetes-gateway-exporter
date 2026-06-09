@@ -117,7 +117,7 @@ curl -fsS http://127.0.0.1:8080/metrics | grep '^exposed_route_info'
 Expected series:
 
 ```text
-exposed_route_info{backend_namespace="test-ns",backend_port="8080",gateway_name="my-gateway",hostname="",http_path="/api",ip_address="",lb_type="external",listener_name="http",namespace="test-ns",route_name="my-route",route_namespace="test-ns",service_name="test-svc"} 1
+exposed_route_info{backend_namespace="test-ns",backend_port="8080",gateway_name="my-gateway",hostname="",http_path="/api",ip_address="",lb_type="external",listener_name="http",namespace="test-ns",route_name="my-route",service_name="test-svc"} 1
 ```
 
 The empty `ip_address` is expected because no Gateway controller allocates an address in this test.

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/tokanize/kubernetes-gateway-exporter/pkg/models"
 	corev1 "k8s.io/api/core/v1"
@@ -22,6 +24,9 @@ const gatewayAPIGroup = "gateway.networking.k8s.io"
 type Mapper struct {
 	client client.Client
 	logger *slog.Logger
+
+	mu            sync.RWMutex
+	exposedRoutes []models.ExposedRoute
 }
 
 // NewMapper creates a new relationship mapper using the provided cached client.
@@ -30,6 +35,46 @@ func NewMapper(c client.Client, logger *slog.Logger) *Mapper {
 		client: c,
 		logger: logger.With(slog.String("component", "mapper")),
 	}
+}
+
+// Start satisfies the manager.Runnable interface to run the background periodic cache updater.
+func (m *Mapper) Start(ctx context.Context) error {
+	m.logger.Info("Starting Mapper background cache updater")
+
+	// Perform initial synchronous update so metrics are populated immediately
+	if err := m.UpdateCache(ctx); err != nil {
+		m.logger.Error("Initial cache update failed", slog.Any("error", err))
+	}
+
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			m.logger.Info("Stopping Mapper background cache updater")
+			return nil
+		case <-ticker.C:
+			if err := m.UpdateCache(ctx); err != nil {
+				m.logger.Error("Failed to update cache in background", slog.Any("error", err))
+			}
+		}
+	}
+}
+
+// UpdateCache calculates all exposed routes and updates the thread-safe in-memory cache.
+func (m *Mapper) UpdateCache(ctx context.Context) error {
+	routes, err := m.calculateExposedRoutes(ctx)
+	if err != nil {
+		return err
+	}
+
+	m.mu.Lock()
+	m.exposedRoutes = routes
+	m.mu.Unlock()
+
+	m.logger.Debug("In-memory routing cache updated", slog.Int("routes_count", len(routes)))
+	return nil
 }
 
 func parentGroup(ref gwv1.ParentReference) string {
@@ -318,8 +363,19 @@ func gatewayIPAddress(gateway *gwv1.Gateway) string {
 	return ""
 }
 
-// GetExposedRoutes resolves accepted HTTPRoute relationships before traffic is observed.
+// GetExposedRoutes returns a copy of pre-computed exposed routes in O(1) time.
 func (m *Mapper) GetExposedRoutes(ctx context.Context) ([]models.ExposedRoute, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	// Shallow-copy to prevent external mutation or data races
+	routesCopy := make([]models.ExposedRoute, len(m.exposedRoutes))
+	copy(routesCopy, m.exposedRoutes)
+	return routesCopy, nil
+}
+
+// calculateExposedRoutes resolves accepted HTTPRoute relationships before traffic is observed.
+func (m *Mapper) calculateExposedRoutes(ctx context.Context) ([]models.ExposedRoute, error) {
 	var routes gwv1.HTTPRouteList
 	if err := m.client.List(ctx, &routes); err != nil {
 		return nil, fmt.Errorf("failed to list HTTPRoutes: %w", err)

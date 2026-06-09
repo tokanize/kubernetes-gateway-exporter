@@ -13,7 +13,7 @@ var (
 	exposedRouteInfoDesc = prometheus.NewDesc(
 		"exposed_route_info",
 		"Information about logical route-to-Service relationships exposed via Kubernetes Gateway API.",
-		[]string{"namespace", "gateway_name", "route_name", "route_namespace", "hostname", "listener_name", "http_path", "service_name", "backend_namespace", "backend_port", "lb_type", "ip_address"},
+		[]string{"namespace", "gateway_name", "route_name", "hostname", "listener_name", "http_path", "service_name", "backend_namespace", "backend_port", "lb_type", "ip_address"},
 		nil,
 	)
 )
@@ -40,9 +40,9 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 // Collect implements prometheus.Collector. It is called on every scrape.
 func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	start := time.Now()
-	// In a real scenario, context with timeout should be passed from the scrape request,
-	// but Prometheus Collector interface doesn't natively provide one.
-	ctx := context.Background()
+	// Scrape context with concrete timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
 
 	routes, err := e.mapper.GetExposedRoutes(ctx)
 	if err != nil {
@@ -58,7 +58,6 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			route.Namespace,
 			route.GatewayName,
 			route.RouteName,
-			route.RouteNamespace,
 			route.Hostname,
 			route.ListenerName,
 			route.HTTPPath,
@@ -69,5 +68,5 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 			route.IPAddress,
 		)
 	}
-	e.logger.Info("Prometheus metrics collected", slog.Int("routes_count", len(routes)), slog.Duration("duration", time.Since(start)))
+	e.logger.Debug("Prometheus metrics collected", slog.Int("routes_count", len(routes)), slog.Duration("duration", time.Since(start)))
 }

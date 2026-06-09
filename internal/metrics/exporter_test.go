@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"log/slog"
 	"testing"
 
@@ -48,7 +49,11 @@ func TestExporterGatherIncludesCompleteLabelSet(t *testing.T) {
 		Spec:       corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 8080}}},
 	}
 	client := fake.NewClientBuilder().WithScheme(scheme).WithObjects(gateway, route, service).Build()
-	collector := NewExporter(mapper.NewMapper(client, slog.Default()), slog.Default())
+	m := mapper.NewMapper(client, slog.Default())
+	if err := m.UpdateCache(context.Background()); err != nil {
+		t.Fatalf("failed to update cache: %v", err)
+	}
+	collector := NewExporter(m, slog.Default())
 	registry := prometheus.NewPedanticRegistry()
 	if err := registry.Register(collector); err != nil {
 		t.Fatalf("register collector: %v", err)
@@ -64,7 +69,7 @@ func TestExporterGatherIncludesCompleteLabelSet(t *testing.T) {
 
 	wantLabels := map[string]string{
 		"namespace": "default", "gateway_name": "public", "route_name": "api",
-		"route_namespace": "default", "hostname": "", "listener_name": "http",
+		"hostname": "", "listener_name": "http",
 		"http_path": "/", "service_name": "api", "backend_namespace": "default",
 		"backend_port": "8080", "lb_type": "external", "ip_address": "192.0.2.10",
 	}

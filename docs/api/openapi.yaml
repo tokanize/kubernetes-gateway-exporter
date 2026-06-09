@@ -43,4 +43,4 @@ paths:
                 type: string
                 description: >
                   The `exposed_route_info` gauge provides inventory of logical Gateway API route-to-Service relationships; it does not enumerate Pods or EndpointSlices.
-                  Labels: `namespace`, `gateway_name`, `route_name`, `route_namespace`, `hostname`, `listener_name`, `http_path`, `service_name`, `backend_namespace`, `backend_port`, `lb_type`, `ip_address`.
+                  Labels: `namespace`, `gateway_name`, `route_name`, `hostname`, `listener_name`, `http_path`, `service_name`, `backend_namespace`, `backend_port`, `lb_type`, `ip_address`.

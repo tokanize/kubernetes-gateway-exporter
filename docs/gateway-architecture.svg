@@ -104,7 +104,7 @@
   <text x="174" y="508" class="code" font-size="14" text-anchor="start" fill="#c084fc">exposed_route_info</text>
   <text x="330" y="508" class="code" font-size="14" text-anchor="start" fill="#475569">{</text>
   <text x="726" y="508" class="code" font-size="14" text-anchor="end" fill="#475569">} 1</text>
-  <text x="176" y="532" class="code" font-size="12" text-anchor="start" fill="#94a3b8">gateway_name, listener_name, route_name, route_namespace, hostname, http_path</text>
+  <text x="176" y="532" class="code" font-size="12" text-anchor="start" fill="#94a3b8">gateway_name, listener_name, route_name, hostname, http_path</text>
 
   <!-- transport caption -->
   <text x="450" y="578" class="kind" text-anchor="middle" fill="#475569">EXPOSED VIA  Prometheus /metrics   ·   OpenTelemetry gRPC push</text>

@@ -11,10 +11,9 @@ attached to a listener and resolved to a backend Service.
 
 | Label | Description |
 |-------|-------------|
-| `namespace` | HTTPRoute namespace, retained for backward compatibility. |
+| `namespace` | HTTPRoute namespace, retained for resource identity and backward compatibility. |
 | `gateway_name` | Referenced parent Gateway name. |
 | `route_name` | HTTPRoute name (`metadata.name`). |
-| `route_namespace` | Namespace containing the HTTPRoute. |
 | `hostname` | Effective hostname intersection between the route and listener; empty when unrestricted. |
 | `listener_name` | Accepting Gateway listener. |
 | `http_path` | Path from an HTTPRoute match, defaulting to `/`. |
@@ -27,7 +26,7 @@ attached to a listener and resolved to a backend Service.
 ### Example series
 
 ```text
-exposed_route_info{backend_namespace="test-ns",backend_port="8080",gateway_name="my-gateway",hostname="",http_path="/api",ip_address="",lb_type="external",listener_name="http",namespace="test-ns",route_name="my-route",route_namespace="test-ns",service_name="test-svc"} 1
+exposed_route_info{backend_namespace="test-ns",backend_port="8080",gateway_name="my-gateway",hostname="",http_path="/api",ip_address="",lb_type="external",listener_name="http",namespace="test-ns",route_name="my-route",service_name="test-svc"} 1
 ```
 
 ### What it does not measure
