@@ -53,6 +53,10 @@ func main() {
 
 	// 2. Setup Mapper
 	routeMapper := mapper.NewMapper(mgr.GetClient(), logger)
+	if err := mgr.Add(routeMapper); err != nil {
+		logger.Error("Failed to add mapper as runnable to manager", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

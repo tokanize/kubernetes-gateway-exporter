@@ -48,6 +48,7 @@ func Setup(port string, logger *slog.Logger, mgr manager.Manager) *http.Server {
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB limit on headers
 	}
 
 	return srv

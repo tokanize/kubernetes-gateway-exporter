@@ -72,10 +72,9 @@ The primary metric is `exposed_route_info` (Gauge), which explicitly identifies 
 It describes logical Gateway API routing relationships, not Pod IPs or `EndpointSlice` members. A Service with five backing Pods still produces one series for each valid listener/hostname/path/backend combination, not five Pod-level series.
 
 It includes the following labels:
-- `namespace`: HTTPRoute namespace, retained for backward compatibility.
+- `namespace`: HTTPRoute namespace, retained for resource identity and backward compatibility.
 - `gateway_name`: Parent Gateway name.
 - `route_name`: `metadata.name` of the HTTPRoute.
-- `route_namespace`: Namespace containing the HTTPRoute.
 - `hostname`: Effective intersection hostname.
 - `listener_name`: Gateway listener attached.
 - `http_path`: Route path match.
@@ -86,7 +85,7 @@ It includes the following labels:
 - `ip_address`: First IP from `Gateway.status.addresses`, or an empty string while unavailable.
 
 Users can locate the source YAML producing a specific metric series by running
-(substitute the `route_namespace` and `route_name` label values):
+(substitute the `namespace` and `route_name` label values):
 ```bash
 ROUTE_NAMESPACE=default
 ROUTE_NAME=my-route
