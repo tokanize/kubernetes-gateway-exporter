@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/tokanize/kubernetes-gateway-exporter/pkg/models"
 	corev1 "k8s.io/api/core/v1"
@@ -598,4 +599,28 @@ func TestMapper_Concurrency(t *testing.T) {
 	}
 
 	wg.Wait()
+}
+
+func TestGetExposedRoutesRespectsContextCancellationWhenLockIsBusy(t *testing.T) {
+	testScheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(testScheme)
+	_ = gwv1.Install(testScheme)
+
+	m := NewMapper(fake.NewClientBuilder().WithScheme(testScheme).Build(), slog.Default())
+
+	// Lock the write-lock manually to block any readers
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Context with a brief timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err := m.GetExposedRoutes(ctx)
+	if err == nil {
+		t.Fatal("expected context deadline error, got nil")
+	}
+	if err != context.DeadlineExceeded && err != context.Canceled {
+		t.Errorf("expected context DeadlineExceeded, got: %v", err)
+	}
 }

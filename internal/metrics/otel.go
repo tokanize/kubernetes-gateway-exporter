@@ -54,6 +54,7 @@ func SetupOTEL(ctx context.Context, m *mapper.Mapper, logger *slog.Logger) (func
 		metric.WithDescription("Information about logical route-to-Service relationships exposed via Kubernetes Gateway API."),
 		metric.WithInt64Callback(func(ctx context.Context, o metric.Int64Observer) error {
 			start := time.Now()
+
 			routes, err := m.GetExposedRoutes(ctx)
 			if err != nil {
 				logger.Error("OTEL Callback Error: failed to get routes", slog.Any("error", err))
