@@ -14,7 +14,8 @@ export default defineConfig({
   // stays honest instead of silencing real broken links with ignoreDeadLinks.
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/kubernetes-gateway-exporter/logo.svg' }]
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/kubernetes-gateway-exporter/logo.svg' }],
+    ['meta', { name: 'google-site-verification', content: 'sqwcB8eTZhATJNEDCyhtl2hYfaDApI37H3SEVg2ZMoM' }]
   ],
   themeConfig: {
     logo: '/logo.svg',
