@@ -4,6 +4,9 @@ export default defineConfig({
   title: "K8s Gateway Exporter",
   description: "Gateway API exposure-inventory exporter for Kubernetes. Maps Gateway→Listener→HTTPRoute→Service into Prometheus/OTel metrics.",
   base: "/kubernetes-gateway-exporter/", // Important for GitHub Pages deployment
+  sitemap: {
+    hostname: 'https://tokanize.github.io'
+  },
 
   // Dead-link checking stays ON (VitePress default). Links that intentionally
   // leave the docs/ tree (examples/, SECURITY.md, openspec/, raw OpenAPI YAML)
@@ -11,7 +14,8 @@ export default defineConfig({
   // stays honest instead of silencing real broken links with ignoreDeadLinks.
 
   head: [
-    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/kubernetes-gateway-exporter/logo.svg' }]
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/kubernetes-gateway-exporter/logo.svg' }],
+    ['meta', { name: 'google-site-verification', content: 'sqwcB8eTZhATJNEDCyhtl2hYfaDApI37H3SEVg2ZMoM' }]
   ],
   themeConfig: {
     logo: '/logo.svg',
