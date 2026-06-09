@@ -11,6 +11,11 @@ test:
 	@echo "Running tests..."
 	go test ./... -v
 
+# Run tests with race detector
+test-race:
+	@echo "Running tests with race detector..."
+	go test -race ./... -v
+
 # Format Go code (rewrites files)
 fmt:
 	@echo "Formatting code..."
@@ -76,6 +81,6 @@ clean:
 	@rm -rf bin/
 
 # Full local verification — mirrors what CI runs
-verify: fmt-check vet staticcheck tidy-check test
+verify: fmt-check vet staticcheck tidy-check test test-race helm-lint docker-build
 	@echo ""
-	@echo "All checks passed: fmt-check, vet, staticcheck, tidy-check, test."
+	@echo "All checks passed: fmt-check, vet, staticcheck, tidy-check, test, test-race, helm-lint, docker-build."

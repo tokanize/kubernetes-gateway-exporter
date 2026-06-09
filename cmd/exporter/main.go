@@ -87,7 +87,7 @@ func main() {
 		port = "8080"
 	}
 
-	srv := server.Setup(port, logger, mgr)
+	srv := server.Setup(port, logger, mgr, routeMapper)
 	server.RunAsync(srv, logger)
 
 	// Start the manager (starts the informers/caches)

@@ -27,6 +27,7 @@ type Mapper struct {
 
 	mu            sync.RWMutex
 	exposedRoutes []models.ExposedRoute
+	cacheReady    bool
 }
 
 // NewMapper creates a new relationship mapper using the provided cached client.
@@ -35,6 +36,13 @@ func NewMapper(c client.Client, logger *slog.Logger) *Mapper {
 		client: c,
 		logger: logger.With(slog.String("component", "mapper")),
 	}
+}
+
+// Ready returns true if the mapper has successfully computed exposed routes at least once.
+func (m *Mapper) Ready() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.cacheReady
 }
 
 // Start satisfies the manager.Runnable interface to run the background periodic cache updater.
@@ -71,6 +79,7 @@ func (m *Mapper) UpdateCache(ctx context.Context) error {
 
 	m.mu.Lock()
 	m.exposedRoutes = routes
+	m.cacheReady = true
 	m.mu.Unlock()
 
 	m.logger.Debug("In-memory routing cache updated", slog.Int("routes_count", len(routes)))
@@ -363,15 +372,23 @@ func gatewayIPAddress(gateway *gwv1.Gateway) string {
 	return ""
 }
 
-// GetExposedRoutes returns a copy of pre-computed exposed routes in O(1) time.
+// GetExposedRoutes returns a shallow copy of the precomputed exposed routes snapshot.
+// It does not perform Gateway API graph traversal or Kubernetes cache lookups.
 func (m *Mapper) GetExposedRoutes(ctx context.Context) ([]models.ExposedRoute, error) {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	// Shallow-copy to prevent external mutation or data races
-	routesCopy := make([]models.ExposedRoute, len(m.exposedRoutes))
-	copy(routesCopy, m.exposedRoutes)
-	return routesCopy, nil
+	for {
+		if m.mu.TryRLock() {
+			// Shallow-copy to prevent external mutation or data races
+			routesCopy := make([]models.ExposedRoute, len(m.exposedRoutes))
+			copy(routesCopy, m.exposedRoutes)
+			m.mu.RUnlock()
+			return routesCopy, nil
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 // calculateExposedRoutes resolves accepted HTTPRoute relationships before traffic is observed.
