@@ -27,6 +27,7 @@ type Mapper struct {
 
 	mu            sync.RWMutex
 	exposedRoutes []models.ExposedRoute
+	cacheReady    bool
 }
 
 // NewMapper creates a new relationship mapper using the provided cached client.
@@ -35,6 +36,13 @@ func NewMapper(c client.Client, logger *slog.Logger) *Mapper {
 		client: c,
 		logger: logger.With(slog.String("component", "mapper")),
 	}
+}
+
+// Ready returns true if the mapper has successfully computed exposed routes at least once.
+func (m *Mapper) Ready() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.cacheReady
 }
 
 // Start satisfies the manager.Runnable interface to run the background periodic cache updater.
@@ -71,6 +79,7 @@ func (m *Mapper) UpdateCache(ctx context.Context) error {
 
 	m.mu.Lock()
 	m.exposedRoutes = routes
+	m.cacheReady = true
 	m.mu.Unlock()
 
 	m.logger.Debug("In-memory routing cache updated", slog.Int("routes_count", len(routes)))

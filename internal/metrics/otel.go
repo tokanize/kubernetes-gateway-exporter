@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tokanize/kubernetes-gateway-exporter/internal/kubernetes/mapper"
+	"github.com/tokanize/kubernetes-gateway-exporter/pkg/models"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -54,10 +55,29 @@ func SetupOTEL(ctx context.Context, m *mapper.Mapper, logger *slog.Logger) (func
 		metric.WithDescription("Information about logical route-to-Service relationships exposed via Kubernetes Gateway API."),
 		metric.WithInt64Callback(func(ctx context.Context, o metric.Int64Observer) error {
 			start := time.Now()
-			routes, err := m.GetExposedRoutes(ctx)
-			if err != nil {
-				logger.Error("OTEL Callback Error: failed to get routes", slog.Any("error", err))
-				return err
+
+			type result struct {
+				routes []models.ExposedRoute
+				err    error
+			}
+			resCh := make(chan result, 1)
+
+			go func() {
+				routes, err := m.GetExposedRoutes(ctx)
+				resCh <- result{routes: routes, err: err}
+			}()
+
+			var routes []models.ExposedRoute
+			select {
+			case <-ctx.Done():
+				logger.Error("OTEL Callback Error: timeout waiting for exposed routes cache", slog.Any("error", ctx.Err()))
+				return ctx.Err()
+			case res := <-resCh:
+				if res.err != nil {
+					logger.Error("OTEL Callback Error: failed to get routes", slog.Any("error", res.err))
+					return res.err
+				}
+				routes = res.routes
 			}
 
 			for _, route := range routes {

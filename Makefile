@@ -11,6 +11,11 @@ test:
 	@echo "Running tests..."
 	go test ./... -v
 
+# Run tests with race detector
+test-race:
+	@echo "Running tests with race detector..."
+	go test -race ./... -v
+
 # Format Go code (rewrites files)
 fmt:
 	@echo "Formatting code..."

@@ -11,7 +11,7 @@ import (
 
 func TestHealthzProbe(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	srv := Setup("8080", logger, nil) // passing nil for mgr is safe in our modified Setup for tests if we guard it
+	srv := Setup("8080", logger, nil, nil) // passing nil for mgr and mapper is safe in our modified Setup for tests if we guard it
 
 	ts := httptest.NewServer(srv.Handler)
 	defer ts.Close()

@@ -7,6 +7,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tokanize/kubernetes-gateway-exporter/internal/kubernetes/mapper"
+	"github.com/tokanize/kubernetes-gateway-exporter/pkg/models"
 )
 
 var (
@@ -44,10 +45,30 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 
-	routes, err := e.mapper.GetExposedRoutes(ctx)
-	if err != nil {
-		e.logger.Error("Failed to collect exposed routes", slog.Any("error", err))
+	type result struct {
+		routes []models.ExposedRoute
+		err    error
+	}
+	resCh := make(chan result, 1)
+
+	// Execute cache lookup in a goroutine to actually enforce the context timeout
+	// if the RWMutex were to deadlock.
+	go func() {
+		routes, err := e.mapper.GetExposedRoutes(ctx)
+		resCh <- result{routes: routes, err: err}
+	}()
+
+	var routes []models.ExposedRoute
+	select {
+	case <-ctx.Done():
+		e.logger.Error("Timeout waiting for exposed routes cache", slog.Any("error", ctx.Err()))
 		return
+	case res := <-resCh:
+		if res.err != nil {
+			e.logger.Error("Failed to collect exposed routes", slog.Any("error", res.err))
+			return
+		}
+		routes = res.routes
 	}
 
 	for _, route := range routes {
