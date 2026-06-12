@@ -10,3 +10,7 @@ You are Codex, AI Pair Programmer.
 5. **OpenSpec**: Use `/opsx:new` to initialize new specifications and `/opsx:continue` to manage them. Do NOT create OpenSpec directories manually.
 6. **Global Search**: Search the entire repo to eliminate stale names, labels, or examples.
 7. **Validation**: Run OpenSpec and Helm validators. Claim only what is tested.
+
+## graphify
+
+This project commits a knowledge graph at `graphify-out/`. For codebase questions, run `graphify query "<question>"` (also `graphify path "<A>" "<B>"` and `graphify explain "<concept>"`) before grepping raw files, and run `graphify update .` after code changes. The full ruleset lives in the `## graphify` section of [AGENTS.md](./AGENTS.md).
