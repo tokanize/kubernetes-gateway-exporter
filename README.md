@@ -162,6 +162,12 @@ We employ multi-agent LLM systems to maintain this repository. Agent personas an
 
 ### 5. Guides
 - **[Testing Locally on kind](./docs/testing-on-kind.md)**: E2E local verification guide mocking Gateway API controller behavior.
+
+### 6. Code Intelligence
+The repository ships two complementary code-navigation aids that the multi-agent assistants prefer over raw `grep`/`find`:
+- **CodeGraph MCP**: When the CodeGraph MCP server is available, agents query it (`codegraph_explore`) for live, on-demand structural lookups. Its index cache (`.codegraph/`) is local-only and never committed.
+- **[graphify knowledge graph](https://github.com/safishamsi/graphify)**: A committed, queryable knowledge graph of the codebase under [`graphify-out/`](./graphify-out/) (`graph.json`, interactive `graph.html`, `GRAPH_REPORT.md`). Run `graphify query "<question>"`, `graphify path "<A>" "<B>"`, or `graphify explain "<concept>"` for a scoped subgraph; rebuild after code changes with `graphify update .` (AST-only, no API cost). See [ADR-007](./docs/adrs/007-knowledge-graph.md) for the rationale and [CONTRIBUTING.md](./CONTRIBUTING.md) for local setup.
+
 <div align="center">
   <i>Built by <a href="https://github.com/tokanize">@tokanize</a> to scratch a personal observability itch. Over-engineered? Maybe. Useful? Absolutely.</i>
 </div>

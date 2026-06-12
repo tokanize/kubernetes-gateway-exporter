@@ -47,3 +47,12 @@ docs/node_modules/
 # on every push to main, so there is no reason to track them.
 docs/.vitepress/dist/
 docs/.vitepress/cache/
+
+# graphify knowledge graph (https://github.com/safishamsi/graphify):
+# commit only the three shareable outputs so the team gets the graph, and
+# ignore the regenerable local AST cache + internal scratch (version-pinned,
+# machine-specific, rebuilt by `graphify update .` — same rationale as .codegraph/).
+graphify-out/*
+!graphify-out/graph.json
+!graphify-out/graph.html
+!graphify-out/GRAPH_REPORT.md

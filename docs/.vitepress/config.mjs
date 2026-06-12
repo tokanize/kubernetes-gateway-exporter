@@ -57,7 +57,8 @@ export default defineConfig({
           { text: '003: Testing Strategy', link: '/adrs/003-testing-strategy' },
           { text: '004: OpenTelemetry Metrics', link: '/adrs/004-otel-metrics' },
           { text: '005: Security Hardening', link: '/adrs/005-security' },
-          { text: '006: Exposure Metric Identity', link: '/adrs/006-metric-labels-expansion' }
+          { text: '006: Exposure Metric Identity', link: '/adrs/006-metric-labels-expansion' },
+          { text: '007: graphify Knowledge Graph', link: '/adrs/007-knowledge-graph' }
         ]
       }
     ],
