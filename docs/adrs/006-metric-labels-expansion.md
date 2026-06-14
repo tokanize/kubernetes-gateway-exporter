@@ -9,10 +9,9 @@ The original `exposed_route_info` labels identified a Service, Gateway, and path
 ## Decision
 The metric includes these labels:
 
-- `namespace`: HTTPRoute namespace, retained for backward compatibility.
+- `namespace`: HTTPRoute namespace, retained for resource identity and backward compatibility.
 - `gateway_name`: referenced Gateway name.
 - `route_name`: HTTPRoute name.
-- `route_namespace`: HTTPRoute namespace, included as explicit resource identity.
 - `hostname`: effective hostname intersection between the Route and listener; empty when unrestricted.
 - `listener_name`: accepting Gateway listener.
 - `http_path`: path from an HTTPRoute match, defaulting to `/`.

@@ -14,7 +14,7 @@ The system SHALL provide a `/metrics` HTTP endpoint compliant with Prometheus sc
 - GIVEN the application is running
 - WHEN a GET request is made to `/metrics`
 - THEN the system returns the `exposed_route_info` gauge
-- AND the gauge includes labels: `namespace`, `gateway_name`, `route_name`, `route_namespace`, `hostname`, `listener_name`, `http_path`, `service_name`, `backend_namespace`, `backend_port`, `lb_type`, and `ip_address`.
+- AND the gauge includes labels: `namespace`, `gateway_name`, `route_name`, `hostname`, `listener_name`, `http_path`, `service_name`, `backend_namespace`, `backend_port`, `lb_type`, and `ip_address`.
 
 #### Scenario: Service has multiple backing Pods
 - GIVEN an emitted route relationship targets a Service with multiple Pods or EndpointSlice addresses

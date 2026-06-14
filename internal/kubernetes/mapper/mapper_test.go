@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/tokanize/kubernetes-gateway-exporter/pkg/models"
 	corev1 "k8s.io/api/core/v1"
@@ -361,6 +363,9 @@ func TestMapper_GetExposedRoutes(t *testing.T) {
 			c := builder.Build()
 			mapper := NewMapper(c, slog.Default())
 
+			if err := mapper.UpdateCache(context.Background()); err != nil {
+				t.Fatalf("unexpected error updating cache: %v", err)
+			}
 			got, err := mapper.GetExposedRoutes(context.Background())
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -525,5 +530,97 @@ func TestServiceBackendExistsRequiresRequestedPort(t *testing.T) {
 	invalid.Port = ptr(gwv1.PortNumber(9090))
 	if mapper.serviceBackendExists(context.Background(), "default", invalid) {
 		t.Fatal("missing Service port must not be resolved")
+	}
+}
+
+func TestMapper_Concurrency(t *testing.T) {
+	testScheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(testScheme)
+	_ = gwv1.Install(testScheme)
+
+	gateway := &gwv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{Name: "gw-1", Namespace: "default"},
+		Spec: gwv1.GatewaySpec{
+			Listeners: []gwv1.Listener{{Name: "http", Port: 80, Protocol: gwv1.HTTPProtocolType}},
+		},
+		Status: gwv1.GatewayStatus{
+			Conditions: []metav1.Condition{{Type: string(gwv1.GatewayConditionProgrammed), Status: metav1.ConditionTrue}},
+			Addresses:  []gwv1.GatewayStatusAddress{{Type: ptr(gwv1.IPAddressType), Value: "10.0.0.1"}},
+		},
+	}
+	route := &gwv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: "route-1", Namespace: "default"},
+		Spec: gwv1.HTTPRouteSpec{
+			CommonRouteSpec: gwv1.CommonRouteSpec{ParentRefs: []gwv1.ParentReference{{Name: "gw-1"}}},
+			Rules: []gwv1.HTTPRouteRule{
+				{
+					BackendRefs: []gwv1.HTTPBackendRef{
+						{BackendRef: gwv1.BackendRef{BackendObjectReference: gwv1.BackendObjectReference{Name: "svc-1"}}},
+					},
+				},
+			},
+		},
+		Status: gwv1.HTTPRouteStatus{
+			RouteStatus: gwv1.RouteStatus{
+				Parents: []gwv1.RouteParentStatus{{
+					ParentRef:  gwv1.ParentReference{Name: "gw-1"},
+					Conditions: []metav1.Condition{{Type: string(gwv1.RouteConditionAccepted), Status: metav1.ConditionTrue}},
+				}},
+			},
+		},
+	}
+	service := &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{Name: "svc-1", Namespace: "default"},
+		Spec:       corev1.ServiceSpec{Ports: []corev1.ServicePort{{Port: 80}}},
+	}
+
+	c := fake.NewClientBuilder().WithScheme(testScheme).WithObjects(gateway, route, service).Build()
+	m := NewMapper(c, slog.Default())
+
+	var wg sync.WaitGroup
+	ctx := context.Background()
+
+	// 50 concurrent writers calling UpdateCache
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_ = m.UpdateCache(ctx)
+		}()
+	}
+
+	// 100 concurrent readers calling GetExposedRoutes
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = m.GetExposedRoutes(ctx)
+		}()
+	}
+
+	wg.Wait()
+}
+
+func TestGetExposedRoutesRespectsContextCancellationWhenLockIsBusy(t *testing.T) {
+	testScheme := runtime.NewScheme()
+	_ = corev1.AddToScheme(testScheme)
+	_ = gwv1.Install(testScheme)
+
+	m := NewMapper(fake.NewClientBuilder().WithScheme(testScheme).Build(), slog.Default())
+
+	// Lock the write-lock manually to block any readers
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Context with a brief timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+	defer cancel()
+
+	_, err := m.GetExposedRoutes(ctx)
+	if err == nil {
+		t.Fatal("expected context deadline error, got nil")
+	}
+	if err != context.DeadlineExceeded && err != context.Canceled {
+		t.Errorf("expected context DeadlineExceeded, got: %v", err)
 	}
 }

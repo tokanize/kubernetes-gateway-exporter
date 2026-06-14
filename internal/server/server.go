@@ -8,12 +8,13 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/tokanize/kubernetes-gateway-exporter/internal/kubernetes/mapper"
 	"github.com/tokanize/kubernetes-gateway-exporter/internal/middleware"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // Setup creates and returns a fully configured http.Server with all application routes.
-func Setup(port string, logger *slog.Logger, mgr manager.Manager) *http.Server {
+func Setup(port string, logger *slog.Logger, mgr manager.Manager, m *mapper.Mapper) *http.Server {
 	mux := http.NewServeMux()
 
 	// Expose Prometheus Metrics
@@ -27,10 +28,16 @@ func Setup(port string, logger *slog.Logger, mgr manager.Manager) *http.Server {
 
 	// Readiness Probe
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		// Do not report ready until the controller-runtime cache (informers) have fully synced.
+		// Do not report ready until the controller-runtime cache (informers) have fully synced
+		// AND the mapper has successfully populated the initial metrics cache.
 		if mgr != nil && !mgr.GetCache().WaitForCacheSync(r.Context()) {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			fmt.Fprint(w, "caches not synced")
+			fmt.Fprint(w, "informer caches not synced")
+			return
+		}
+		if m != nil && !m.Ready() {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprint(w, "mapper cache not ready")
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -48,6 +55,7 @@ func Setup(port string, logger *slog.Logger, mgr manager.Manager) *http.Server {
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB limit on headers
 	}
 
 	return srv

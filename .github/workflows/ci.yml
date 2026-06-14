@@ -56,6 +56,9 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run race detector tests
+        run: make test-race
+
   helm-lint:
     name: Helm chart lint
     runs-on: ubuntu-latest
