@@ -10,6 +10,7 @@
   [![CodeQL](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/codeql.yml)
   [![govulncheck](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/tokanize/kubernetes-gateway-exporter/actions/workflows/govulncheck.yml)
   [![Documentation](https://img.shields.io/badge/docs-GitHub%20Pages-blue.svg)](https://tokanize.github.io/kubernetes-gateway-exporter/)
+  [![DeepWiki](https://img.shields.io/badge/Wiki-DeepWiki-8A2BE2?logo=wikipedia&logoColor=white)](https://deepwiki.com/tokanize/kubernetes-gateway-exporter)
 </div>
 
 ---
@@ -138,6 +139,9 @@ vulnerability see [SECURITY.md](./SECURITY.md).
 ## Documentation Directory
 
 Welcome to the central entrypoint for the Kubernetes Gateway Exporter documentation. All project rules, architectural decisions, and API schemas are maintained across the following sections:
+
+> [!TIP]
+> **Interactive Code Wiki:** For a comprehensive, structure-mapped walkthrough of these documents and the underlying codebase, check out the **[DeepWiki Documentation](https://deepwiki.com/tokanize/kubernetes-gateway-exporter)**.
 
 ### 1. General & Architecture
 - **[Architecture & Overview](./docs/architecture.md)**: Conceptual model mapping Gateway -> Listener -> HTTPRoute -> Service.
